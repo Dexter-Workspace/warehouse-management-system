@@ -2373,9 +2373,14 @@ function showAddPurchaseModal() {
 
         // Purchase Management
         async function loadPurchases() {
-            if (!currentCompany) return;
+            if (!currentCompany) {
+                console.log('No company selected for purchases load');
+                return;
+            }
             
             try {
+                console.log('Loading purchases for company:', currentCompany);
+                
                 const q = window.firebase.query(
                     window.firebase.collection(window.firebase.db, 'purchases'),
                     window.firebase.where('companyId', '==', currentCompany),
@@ -2386,15 +2391,50 @@ function showAddPurchaseModal() {
                 purchases = [];
                 
                 querySnapshot.forEach((doc) => {
-                    purchases.push({ id: doc.id, ...doc.data() });
+                    const data = doc.data();
+                    purchases.push({ id: doc.id, ...data });
                 });
+                
+                console.log('Loaded purchases:', purchases.length);
                 
                 updatePurchaseTable();
                 updatePurchaseStats();
             } catch (error) {
                 console.error('Error loading purchases:', error);
+                showNotification('Error loading purchases: ' + error.message, 'error');
             }
         }
+
+        function updatePurchaseTable() {
+            const tbody = document.getElementById('purchaseTable');
+            
+            if (purchases.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <div class="empty-state-icon">🛒</div>
+                            <p>No purchase records found</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = purchases.map(purchase => `
+                <tr>
+                    <td>${purchase.poNo || purchase.poNumber}</td>
+                    <td>${new Date(purchase.purchaseDate || purchase.date?.seconds * 1000).toLocaleDateString()}</td>
+                    <td>${purchase.supplierName || purchase.supplier}</td>
+                    <td>${purchase.sku}</td>
+                    <td>${purchase.itemName}</td>
+                    <td>${purchase.quantity}</td>
+                    <td>${purchase.price}</td>
+                    <td>${purchase.amount || purchase.totalCost}</td>
+                    <td><span class="stat-change ${purchase.status === 'Pending' ? 'negative' : 'positive'}">${purchase.status}</span></td>
+                </tr>
+            `).join('');
+        }
+
 
         function updatePurchaseTable() {
             const tbody = document.getElementById('purchaseTable');
@@ -2446,28 +2486,40 @@ function showAddPurchaseModal() {
                 <form onsubmit="handleAddPurchase(event)">
                     <div class="form-grid">
                         <div class="form-group">
-                            <label class="form-label">Supplier</label>
-                            <input type="text" class="form-input" id="purchaseSupplier" required>
+                            <label class="form-label">Purchase Date</label>
+                            <input type="date" class="form-input" id="purchaseDate" required value="${new Date().toISOString().split('T')[0]}">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Item SKU</label>
-                            <input type="text" class="form-input" id="purchaseSKU" required>
+                            <label class="form-label">PO No.</label>
+                            <input type="text" class="form-input" id="purchasePONo" required placeholder="PO-001">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Supplier Name</label>
+                            <input type="text" class="form-input" id="purchaseSupplier" required placeholder="Supplier name">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">SKU</label>
+                            <input type="text" class="form-input" id="purchaseSKU" required placeholder="Item SKU">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Item Name</label>
-                            <input type="text" class="form-input" id="purchaseItemName" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Quantity</label>
-                            <input type="number" class="form-input" id="purchaseQuantity" required min="1">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Unit Cost</label>
-                            <input type="number" class="form-input" id="purchaseUnitCost" required step="0.01" min="0">
+                            <input type="text" class="form-input" id="purchaseItemName" required placeholder="Item name">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Category</label>
-                            <input type="text" class="form-input" id="purchaseCategory" required>
+                            <input type="text" class="form-input" id="purchaseCategory" required placeholder="Category">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-input" id="purchaseQuantity" required min="1" onchange="calculatePurchaseAmount()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Price</label>
+                            <input type="number" class="form-input" id="purchasePrice" required step="0.01" min="0" onchange="calculatePurchaseAmount()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Amount</label>
+                            <input type="number" class="form-input" id="purchaseAmount" readonly step="0.01">
                         </div>
                     </div>
                     <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
@@ -2476,8 +2528,9 @@ function showAddPurchaseModal() {
                     </div>
                 </form>
             `;
-            showModal('Record Stock In', modalBody);
+            showModal('New Purchase Order', modalBody);
         }
+
 
         async function handleAddPurchase(e) {
             e.preventDefault();
@@ -2486,23 +2539,50 @@ function showAddPurchaseModal() {
                 showNotification('Please select a company first', 'error');
                 return;
             }
-            
-            const quantity = parseInt(document.getElementById('purchaseQuantity').value);
-            const unitCost = parseFloat(document.getElementById('purchaseUnitCost').value);
-            const sku = document.getElementById('purchaseSKU').value;
-            
-            const purchaseData = {
-                poNumber: `PO-${Date.now()}`,
-                supplier: document.getElementById('purchaseSupplier').value,
-                items: quantity,
-                totalCost: quantity * unitCost,
-                status: 'Received',
-                companyId: currentCompany,
-                date: window.firebase.serverTimestamp()
-            };
-            
-            showLoading(true);
+
             try {
+                const quantity = parseInt(document.getElementById('purchaseQuantity').value);
+                const price = parseFloat(document.getElementById('purchasePrice').value);
+                const amount = parseFloat(document.getElementById('purchaseAmount').value);
+                const sku = document.getElementById('purchaseSKU').value;
+                const itemName = document.getElementById('purchaseItemName').value;
+                const category = document.getElementById('purchaseCategory').value;
+
+                // Validate inputs
+                if (!sku || !itemName || !category || !quantity || !price) {
+                    showNotification('Please fill in all required fields', 'error');
+                    return;
+                }
+
+                if (quantity <= 0 || price <= 0) {
+                    showNotification('Quantity and price must be greater than 0', 'error');
+                    return;
+                }
+
+                const purchaseData = {
+                    purchaseDate: document.getElementById('purchaseDate').value,
+                    poNo: document.getElementById('purchasePONo').value,
+                    supplierName: document.getElementById('purchaseSupplier').value,
+                    sku: sku,
+                    itemName: itemName,
+                    category: category,
+                    quantity: quantity,
+                    price: price,
+                    amount: amount,
+                    status: 'Received',
+                    companyId: currentCompany,
+                    createdAt: window.firebase.serverTimestamp(),
+                    
+                    // Legacy fields for compatibility
+                    poNumber: document.getElementById('purchasePONo').value,
+                    supplier: document.getElementById('purchaseSupplier').value,
+                    items: quantity,
+                    totalCost: amount,
+                    date: window.firebase.serverTimestamp()
+                };
+                
+                showLoading(true);
+                
                 // Add purchase record
                 await window.firebase.addDoc(window.firebase.collection(window.firebase.db, 'purchases'), purchaseData);
                 
@@ -2515,7 +2595,7 @@ function showAddPurchaseModal() {
                         window.firebase.doc(window.firebase.db, 'inventory', existingItem.id),
                         {
                             quantity: existingItem.quantity + quantity,
-                            unitPrice: unitCost,
+                            unitPrice: price,
                             updatedAt: window.firebase.serverTimestamp()
                         }
                     );
@@ -2523,10 +2603,10 @@ function showAddPurchaseModal() {
                     // Add new inventory item
                     await window.firebase.addDoc(window.firebase.collection(window.firebase.db, 'inventory'), {
                         sku: sku,
-                        name: document.getElementById('purchaseItemName').value,
-                        category: document.getElementById('purchaseCategory').value,
+                        name: itemName,
+                        category: category,
                         quantity: quantity,
-                        unitPrice: unitCost,
+                        unitPrice: price,
                         location: '',
                         companyId: currentCompany,
                         createdAt: window.firebase.serverTimestamp(),
@@ -2539,11 +2619,13 @@ function showAddPurchaseModal() {
                 await loadInventory();
                 showNotification('Purchase recorded successfully', 'success');
             } catch (error) {
+                console.error('Error in handleAddPurchase:', error);
                 showNotification('Error recording purchase: ' + error.message, 'error');
             } finally {
                 showLoading(false);
             }
         }
+
 
         // Section Navigation
         function showSection(sectionId, linkElement) {
