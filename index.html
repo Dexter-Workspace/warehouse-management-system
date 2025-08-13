@@ -1,0 +1,2467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Management System - Firebase Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --gray: #64748b;
+            --light: #f1f5f9;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Login Screen */
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .login-box {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-title {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .app-container {
+            display: none;
+            min-height: 100vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .app-container.active {
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, var(--dark) 0%, #334155 100%);
+            color: white;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .company-selector {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .company-selector select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .company-selector select:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 3rem;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.2); }
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .nav-link:hover::before {
+            left: 100%;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .nav-icon {
+            margin-right: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .logout-btn {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideDown 0.5s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Content Sections */
+        .content-section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            opacity: 0.1;
+            border-radius: 50%;
+            transform: translate(30px, -30px);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-label {
+            color: var(--gray);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-change {
+            font-size: 0.85rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        .stat-change.positive {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .stat-change.negative {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        /* Forms */
+        .form-container {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            position: relative;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+            font-weight: 500;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* Tables */
+        .table-container {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        tbody tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+            transform: scale(1.01);
+        }
+
+        /* Filter Section */
+        .filter-section {
+            background: white;
+            border-radius: 20px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            align-items: end;
+        }
+
+        /* Import/Export Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            padding: 0.75rem 1.5rem;
+            background: var(--success);
+            color: white;
+            border-radius: 12px;
+            cursor: pointer;
+            display: inline-block;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Charts Container */
+        .chart-container {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-placeholder {
+            text-align: center;
+            color: var(--gray);
+        }
+
+        /* Loading Animation */
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--light);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                z-index: 1000;
+                height: 100vh;
+            }
+
+            .sidebar.active {
+                left: 0;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: none;
+            animation: slideIn 0.3s ease;
+            z-index: 9999;
+            max-width: 350px;
+        }
+
+        .notification.show {
+            display: block;
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .notification.error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .notification.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 9998;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            animation: modalSlide 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        @keyframes modalSlide {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--dark);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray);
+            transition: color 0.3s ease;
+        }
+
+        .modal-close:hover {
+            color: var(--dark);
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Container -->
+    <div id="loginContainer" class="login-container">
+        <div class="login-box">
+            <h1 class="login-title">WMS Pro</h1>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="loginEmail" class="form-input" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="loginPassword" class="form-input" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Login</button>
+            </form>
+            <div style="margin-top: 1rem; text-align: center;">
+                <small style="color: var(--gray);">Don't have an account? <a href="#" onclick="showSignup()" style="color: var(--primary);">Sign up</a></small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="appContainer" class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">WMS Pro</div>
+            
+            <!-- Company Selector -->
+            <div class="company-selector">
+                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; opacity: 0.8;">Current Company</label>
+                <select id="companySelect" onchange="switchCompany()">
+                    <!-- Companies will be loaded dynamically -->
+                </select>
+            </div>
+
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <div class="nav-link active" onclick="showSection('dashboard', this)">
+                            <span class="nav-icon">📊</span>
+                            Dashboard
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <div class="nav-link" onclick="showSection('forecast', this)">
+                            <span class="nav-icon">📈</span>
+                            Forecast
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <div class="nav-link" onclick="showSection('inventory', this)">
+                            <span class="nav-icon">📦</span>
+                            Inventory
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <div class="nav-link" onclick="showSection('sales', this)">
+                            <span class="nav-icon">💰</span>
+                            Sales
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <div class="nav-link" onclick="showSection('sales-order', this)">
+                            <span class="nav-icon">📝</span>
+                            Sales Orders
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <div class="nav-link" onclick="showSection('purchase', this)">
+                            <span class="nav-icon">🛒</span>
+                            Purchase
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <div class="nav-link" onclick="showSection('settings', this)">
+                            <span class="nav-icon">⚙️</span>
+                            Settings
+                        </div>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="logout-btn">
+                <div class="nav-link" onclick="logout()">
+                    <span class="nav-icon">🚪</span>
+                    Logout
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <h1 class="page-title" id="pageTitle">Dashboard</h1>
+                <div class="user-info">
+                    <span id="userDisplay">Welcome</span>
+                    <div class="user-avatar" id="userAvatar">U</div>
+                </div>
+            </header>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="content-section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Inventory Value</div>
+                        <div class="stat-value" id="totalInventoryValue">$0</div>
+                        <span class="stat-change positive">Calculating...</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Items</div>
+                        <div class="stat-value" id="totalItems">0</div>
+                        <span class="stat-change positive">Loading...</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Low Stock Items</div>
+                        <div class="stat-value" id="lowStockItems">0</div>
+                        <span class="stat-change negative">Checking...</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Pending Orders</div>
+                        <div class="stat-value" id="pendingOrders">0</div>
+                        <span class="stat-change positive">Processing</span>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-placeholder">
+                        <h3>Inventory Trend Analysis</h3>
+                        <p>Connect to Firebase to see real-time data</p>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <h3 style="margin-bottom: 1.5rem;">Recent Activities</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Item</th>
+                                <th>Quantity</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentActivitiesTable">
+                            <tr>
+                                <td colspan="5" class="empty-state">
+                                    <div class="empty-state-icon">📋</div>
+                                    <p>No recent activities</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Forecast Section -->
+            <section id="forecast" class="content-section">
+                <div class="filter-section">
+                    <div class="filter-grid">
+                        <div class="form-group">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" class="form-input" id="forecastStartDate">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">End Date</label>
+                            <input type="date" class="form-input" id="forecastEndDate">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" id="forecastCategory">
+                                <option>All Categories</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="generateForecast()">Generate Report</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Predicted Demand</div>
+                        <div class="stat-value" id="predictedDemand">0</div>
+                        <span class="stat-change positive">Units next month</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Recommended Order</div>
+                        <div class="stat-value" id="recommendedOrder">0</div>
+                        <span class="stat-change positive">Units to order</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Stock Coverage</div>
+                        <div class="stat-value" id="stockCoverage">0</div>
+                        <span class="stat-change positive">Days</span>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-placeholder">
+                        <h3>Demand Forecast Chart</h3>
+                        <p>Predictive analytics visualization</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Inventory Section -->
+            <section id="inventory" class="content-section">
+                <div class="action-buttons">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="inventoryImport" accept=".csv" onchange="importCSV('inventory')">
+                        <label for="inventoryImport" class="file-input-label">📥 Import CSV</label>
+                    </div>
+                    <button class="btn btn-secondary" onclick="exportCSV('inventory')">📤 Export CSV</button>
+                    <button class="btn btn-success" onclick="showAddInventoryModal()">+ Add Item</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Stock Value</div>
+                        <div class="stat-value" id="totalStockValue">$0</div>
+                        <span class="stat-change positive">Loading...</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total SKUs</div>
+                        <div class="stat-value" id="totalSKUs">0</div>
+                        <span class="stat-change positive">Loading...</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Low Stock Alert</div>
+                        <div class="stat-value" id="lowStockAlert">0</div>
+                        <span class="stat-change negative">Items below threshold</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Out of Stock</div>
+                        <div class="stat-value" id="outOfStock">0</div>
+                        <span class="stat-change negative">Needs reorder</span>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-grid">
+                        <div class="form-group">
+                            <label class="form-label">Search Item</label>
+                            <input type="text" class="form-input" placeholder="Enter item name or SKU" id="inventorySearch">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" id="inventoryCategory">
+                                <option>All Categories</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="searchInventory()">🔍 Search</button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <h3 style="margin-bottom: 1.5rem;">Current Inventory</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>SKU</th>
+                                <th>Item Name</th>
+                                <th>Category</th>
+                                <th>Quantity</th>
+                                <th>Unit Price</th>
+                                <th>Total Value</th>
+                                <th>Last Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryTable">
+                            <tr>
+                                <td colspan="8" class="empty-state">
+                                    <div class="empty-state-icon">📦</div>
+                                    <p>No inventory items found</p>
+                                    <button class="btn btn-primary" onclick="showAddInventoryModal()" style="margin-top: 1rem;">Add First Item</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Sales Section -->
+            <section id="sales" class="content-section">
+                <div class="action-buttons">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="salesImport" accept=".csv" onchange="importCSV('sales')">
+                        <label for="salesImport" class="file-input-label">📥 Import CSV</label>
+                    </div>
+                    <button class="btn btn-secondary" onclick="exportCSV('sales')">📤 Export CSV</button>
+                    <button class="btn btn-success" onclick="showAddSaleModal()">+ Record Sale</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Today's Sales</div>
+                        <div class="stat-value" id="todaysSales">$0</div>
+                        <span class="stat-change positive">Loading...</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Units Sold Today</div>
+                        <div class="stat-value" id="unitsSoldToday">0</div>
+                        <span class="stat-change positive">Loading...</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Average Order Value</div>
+                        <div class="stat-value" id="avgOrderValue">$0</div>
+                        <span class="stat-change positive">Loading...</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Transactions</div>
+                        <div class="stat-value" id="totalTransactions">0</div>
+                        <span class="stat-change positive">Loading...</span>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <h3 style="margin-bottom: 1.5rem;">Recent Sales Transactions</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Transaction ID</th>
+                                <th>Date/Time</th>
+                                <th>Item SKU</th>
+                                <th>Item Name</th>
+                                <th>Quantity</th>
+                                <th>Unit Price</th>
+                                <th>Total</th>
+                                <th>Customer</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesTable">
+                            <tr>
+                                <td colspan="9" class="empty-state">
+                                    <div class="empty-state-icon">💰</div>
+                                    <p>No sales transactions found</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Sales Orders Section -->
+            <section id="sales-order" class="content-section">
+                <div class="action-buttons">
+                    <button class="btn btn-success" onclick="showNewOrderModal()">+ New Order</button>
+                    <button class="btn btn-secondary" onclick="exportCSV('orders')">📤 Export Orders</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Orders</div>
+                        <div class="stat-value" id="totalOrders">0</div>
+                        <span class="stat-change positive">All time</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Pending Orders</div>
+                        <div class="stat-value" id="pendingOrdersCount">0</div>
+                        <span class="stat-change negative">Awaiting processing</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Completed Orders</div>
+                        <div class="stat-value" id="completedOrders">0</div>
+                        <span class="stat-change positive">This month</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Order Value</div>
+                        <div class="stat-value" id="totalOrderValue">$0</div>
+                        <span class="stat-change positive">This month</span>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <h3 style="margin-bottom: 1.5rem;">Sales Orders</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Items</th>
+                                <th>Total Amount</th>
+                                <th>Order Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTable">
+                            <tr>
+                                <td colspan="7" class="empty-state">
+                                    <div class="empty-state-icon">📝</div>
+                                    <p>No orders found</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Purchase Section -->
+            <section id="purchase" class="content-section">
+                <div class="action-buttons">
+                    <button class="btn btn-success" onclick="showAddPurchaseModal()">+ New Purchase</button>
+                    <button class="btn btn-secondary" onclick="exportCSV('purchase')">📤 Export Purchases</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Purchases</div>
+                        <div class="stat-value" id="totalPurchases">$0</div>
+                        <span class="stat-change positive">This month</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Active POs</div>
+                        <div class="stat-value" id="activePOs">0</div>
+                        <span class="stat-change positive">In progress</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Suppliers</div>
+                        <div class="stat-value" id="suppliersCount">0</div>
+                        <span class="stat-change positive">Active</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Items Purchased</div>
+                        <div class="stat-value" id="itemsPurchased">0</div>
+                        <span class="stat-change positive">This month</span>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <h3 style="margin-bottom: 1.5rem;">Recent Purchases</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>PO Number</th>
+                                <th>Supplier</th>
+                                <th>Items</th>
+                                <th>Total Cost</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="purchaseTable">
+                            <tr>
+                                <td colspan="7" class="empty-state">
+                                    <div class="empty-state-icon">🛒</div>
+                                    <p>No purchase records found</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings" class="content-section">
+                <div class="form-container">
+                    <h3 style="margin-bottom: 2rem;">Company Management</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Company Name</label>
+                            <input type="text" class="form-input" id="newCompanyName" placeholder="Enter company name">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Industry</label>
+                            <select class="form-select" id="newCompanyIndustry">
+                                <option>Manufacturing</option>
+                                <option>Retail</option>
+                                <option>Distribution</option>
+                                <option>E-commerce</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <button class="btn btn-success" style="margin-top: 1.7rem;" onclick="addCompany()">Add Company</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container" style="margin-top: 2rem; padding: 0;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Company Name</th>
+                                    <th>Industry</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="companiesTable">
+                                <tr>
+                                    <td colspan="4" class="empty-state">Loading companies...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="form-container" style="margin-top: 2rem;">
+                    <h3 style="margin-bottom: 2rem;">Profile Settings</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Display Name</label>
+                            <input type="text" class="form-input" id="profileName" placeholder="Your name">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-input" id="profileEmail" readonly>
+                        </div>
+                        <div class="form-group">
+                            <button class="btn btn-primary" style="margin-top: 1.7rem;" onclick="updateProfile()">Update Profile</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification">
+        <span id="notificationText">Operation completed successfully!</span>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loader"></div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Modal Title</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div id="modalBody">
+                <!-- Modal content will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+        import { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword,
+            signOut,
+            onAuthStateChanged 
+        } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            getDocs, 
+            doc, 
+            updateDoc, 
+            deleteDoc,
+            query,
+            where,
+            orderBy,
+            limit,
+            onSnapshot,
+            serverTimestamp 
+        } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+
+        // Your Firebase configuration
+        // REPLACE WITH YOUR ACTUAL FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtQO34xj_F0Yvn8EeBGKbhsDr11LxH_p8",
+            authDomain: "warehouse-management-sys-13896.firebaseapp.com",
+            projectId: "warehouse-management-sys-13896",
+            storageBucket: "warehouse-management-sys-13896.firebasestorage.app",
+            messagingSenderId: "982323352884",
+            appId: "1:982323352884:web:34709f57bb6268e056c161"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Make Firebase available globally
+        window.firebase = {
+            auth,
+            db,
+            signInWithEmailAndPassword,
+            createUserWithEmailAndPassword,
+            signOut,
+            onAuthStateChanged,
+            collection,
+            addDoc,
+            getDocs,
+            doc,
+            updateDoc,
+            deleteDoc,
+            query,
+            where,
+            orderBy,
+            limit,
+            onSnapshot,
+            serverTimestamp
+        };
+
+        // Initialize auth state listener
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.currentUser = user;
+                showApp();
+                loadUserData();
+            } else {
+                window.currentUser = null;
+                showLogin();
+            }
+        });
+    </script>
+
+    <script>
+        // Global variables
+        let currentSection = 'dashboard';
+        let currentCompany = null;
+        let companies = [];
+        let inventory = [];
+        let sales = [];
+        let orders = [];
+        let purchases = [];
+
+        // Authentication Functions
+        async function login(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            showLoading(true);
+            try {
+                await window.firebase.signInWithEmailAndPassword(window.firebase.auth, email, password);
+                showNotification('Login successful!', 'success');
+            } catch (error) {
+                showNotification(error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function signup(email, password, name) {
+            showLoading(true);
+            try {
+                const userCredential = await window.firebase.createUserWithEmailAndPassword(window.firebase.auth, email, password);
+                
+                // Create user profile
+                await window.firebase.addDoc(window.firebase.collection(window.firebase.db, 'users'), {
+                    uid: userCredential.user.uid,
+                    email: email,
+                    name: name,
+                    createdAt: window.firebase.serverTimestamp()
+                });
+                
+                showNotification('Account created successfully!', 'success');
+            } catch (error) {
+                showNotification(error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                showLoading(true);
+                try {
+                    await window.firebase.signOut(window.firebase.auth);
+                    showNotification('Logged out successfully', 'success');
+                } catch (error) {
+                    showNotification(error.message, 'error');
+                } finally {
+                    showLoading(false);
+                }
+            }
+        }
+
+        function showLogin() {
+            document.getElementById('loginContainer').style.display = 'flex';
+            document.getElementById('appContainer').classList.remove('active');
+        }
+
+        function showApp() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('appContainer').classList.add('active');
+        }
+
+        function showSignup() {
+            const modalBody = `
+                <form onsubmit="handleSignup(event)">
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-input" id="signupName" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-input" id="signupEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-input" id="signupPassword" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Sign Up</button>
+                </form>
+            `;
+            showModal('Create Account', modalBody);
+        }
+
+        async function handleSignup(e) {
+            e.preventDefault();
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            
+            await signup(email, password, name);
+            closeModal();
+        }
+
+        // Load user data
+        async function loadUserData() {
+            if (!window.currentUser) return;
+            
+            // Update user display
+            const userEmail = window.currentUser.email;
+            document.getElementById('userDisplay').textContent = `Welcome, ${userEmail}`;
+            document.getElementById('userAvatar').textContent = userEmail.charAt(0).toUpperCase();
+            document.getElementById('profileEmail').value = userEmail;
+            
+            // Load companies
+            await loadCompanies();
+            
+            // Load initial data
+            if (currentCompany) {
+                await loadDashboardData();
+            }
+        }
+
+        // Company Management
+        async function loadCompanies() {
+            try {
+                const q = window.firebase.query(
+                    window.firebase.collection(window.firebase.db, 'companies'),
+                    window.firebase.where('userId', '==', window.currentUser.uid)
+                );
+                
+                const querySnapshot = await window.firebase.getDocs(q);
+                companies = [];
+                
+                querySnapshot.forEach((doc) => {
+                    companies.push({ id: doc.id, ...doc.data() });
+                });
+                
+                updateCompanySelector();
+                updateCompaniesTable();
+                
+                if (companies.length > 0 && !currentCompany) {
+                    currentCompany = companies[0].id;
+                    document.getElementById('companySelect').value = currentCompany;
+                }
+            } catch (error) {
+                console.error('Error loading companies:', error);
+            }
+        }
+
+        function updateCompanySelector() {
+            const select = document.getElementById('companySelect');
+            select.innerHTML = companies.map(company => 
+                `<option value="${company.id}">${company.name}</option>`
+            ).join('');
+            
+            if (companies.length === 0) {
+                select.innerHTML = '<option value="">No companies - Add one in Settings</option>';
+            }
+        }
+
+        function updateCompaniesTable() {
+            const tbody = document.getElementById('companiesTable');
+            
+            if (companies.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="empty-state">No companies found</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = companies.map(company => `
+                <tr>
+                    <td>${company.name}</td>
+                    <td>${company.industry}</td>
+                    <td>${new Date(company.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-danger" style="padding: 0.5rem; font-size: 0.9rem;" 
+                                onclick="deleteCompany('${company.id}')">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function addCompany() {
+            const name = document.getElementById('newCompanyName').value;
+            const industry = document.getElementById('newCompanyIndustry').value;
+            
+            if (!name) {
+                showNotification('Please enter a company name', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            try {
+                await window.firebase.addDoc(window.firebase.collection(window.firebase.db, 'companies'), {
+                    name: name,
+                    industry: industry,
+                    userId: window.currentUser.uid,
+                    createdAt: window.firebase.serverTimestamp()
+                });
+                
+                document.getElementById('newCompanyName').value = '';
+                await loadCompanies();
+                showNotification('Company added successfully', 'success');
+            } catch (error) {
+                showNotification('Error adding company: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function deleteCompany(companyId) {
+            if (!confirm('Are you sure you want to delete this company? All related data will be lost.')) {
+                return;
+            }
+            
+            showLoading(true);
+            try {
+                await window.firebase.deleteDoc(window.firebase.doc(window.firebase.db, 'companies', companyId));
+                await loadCompanies();
+                showNotification('Company deleted successfully', 'success');
+            } catch (error) {
+                showNotification('Error deleting company: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function switchCompany() {
+            currentCompany = document.getElementById('companySelect').value;
+            if (currentCompany) {
+                loadDashboardData();
+                showNotification('Switched company', 'success');
+            }
+        }
+
+        // Dashboard Data
+        async function loadDashboardData() {
+            if (!currentCompany) {
+                showNotification('Please select or create a company first', 'warning');
+                return;
+            }
+            
+            await Promise.all([
+                loadInventory(),
+                loadSales(),
+                loadOrders(),
+                loadPurchases()
+            ]);
+            
+            updateDashboardStats();
+        }
+
+        function updateDashboardStats() {
+            // Calculate total inventory value
+            const totalValue = inventory.reduce((sum, item) => 
+                sum + (item.quantity * item.unitPrice), 0);
+            document.getElementById('totalInventoryValue').textContent = `${totalValue.toFixed(2)}`;
+            
+            // Total items
+            const totalItems = inventory.reduce((sum, item) => sum + item.quantity, 0);
+            document.getElementById('totalItems').textContent = totalItems;
+            
+            // Low stock items (less than 10)
+            const lowStock = inventory.filter(item => item.quantity < 10).length;
+            document.getElementById('lowStockItems').textContent = lowStock;
+            
+            // Pending orders
+            const pending = orders.filter(order => order.status === 'Pending').length;
+            document.getElementById('pendingOrders').textContent = pending;
+        }
+
+        // Inventory Management
+        async function loadInventory() {
+            if (!currentCompany) return;
+            
+            try {
+                const q = window.firebase.query(
+                    window.firebase.collection(window.firebase.db, 'inventory'),
+                    window.firebase.where('companyId', '==', currentCompany)
+                );
+                
+                const querySnapshot = await window.firebase.getDocs(q);
+                inventory = [];
+                
+                querySnapshot.forEach((doc) => {
+                    inventory.push({ id: doc.id, ...doc.data() });
+                });
+                
+                updateInventoryTable();
+                updateInventoryStats();
+            } catch (error) {
+                console.error('Error loading inventory:', error);
+            }
+        }
+
+        function updateInventoryTable() {
+            const tbody = document.getElementById('inventoryTable');
+            
+            if (inventory.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <div class="empty-state-icon">📦</div>
+                            <p>No inventory items found</p>
+                            <button class="btn btn-primary" onclick="showAddInventoryModal()" style="margin-top: 1rem;">Add First Item</button>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = inventory.map(item => `
+                <tr>
+                    <td>${item.sku}</td>
+                    <td>${item.name}</td>
+                    <td>${item.category}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.unitPrice.toFixed(2)}</td>
+                    <td>${(item.quantity * item.unitPrice).toFixed(2)}</td>
+                    <td>${new Date(item.updatedAt?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding: 0.5rem; font-size: 0.9rem;" 
+                                onclick="editInventoryItem('${item.id}')">Edit</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateInventoryStats() {
+            const totalValue = inventory.reduce((sum, item) => 
+                sum + (item.quantity * item.unitPrice), 0);
+            document.getElementById('totalStockValue').textContent = `${totalValue.toFixed(2)}`;
+            document.getElementById('totalSKUs').textContent = inventory.length;
+            
+            const lowStock = inventory.filter(item => item.quantity < 10).length;
+            document.getElementById('lowStockAlert').textContent = lowStock;
+            
+            const outOfStock = inventory.filter(item => item.quantity === 0).length;
+            document.getElementById('outOfStock').textContent = outOfStock;
+        }
+
+        function showAddInventoryModal() {
+            const modalBody = `
+                <form onsubmit="handleAddInventory(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Item Name</label>
+                            <input type="text" class="form-input" id="itemName" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">SKU</label>
+                            <input type="text" class="form-input" id="itemSKU" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <input type="text" class="form-input" id="itemCategory" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-input" id="itemQuantity" required min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Unit Price</label>
+                            <input type="number" class="form-input" id="itemPrice" required step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-input" id="itemLocation" placeholder="Warehouse location">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Item</button>
+                    </div>
+                </form>
+            `;
+            showModal('Add Inventory Item', modalBody);
+        }
+
+        async function handleAddInventory(e) {
+            e.preventDefault();
+            
+            if (!currentCompany) {
+                showNotification('Please select a company first', 'error');
+                return;
+            }
+            
+            const itemData = {
+                name: document.getElementById('itemName').value,
+                sku: document.getElementById('itemSKU').value,
+                category: document.getElementById('itemCategory').value,
+                quantity: parseInt(document.getElementById('itemQuantity').value),
+                unitPrice: parseFloat(document.getElementById('itemPrice').value),
+                location: document.getElementById('itemLocation').value,
+                companyId: currentCompany,
+                createdAt: window.firebase.serverTimestamp(),
+                updatedAt: window.firebase.serverTimestamp()
+            };
+            
+            showLoading(true);
+            try {
+                await window.firebase.addDoc(window.firebase.collection(window.firebase.db, 'inventory'), itemData);
+                closeModal();
+                await loadInventory();
+                showNotification('Item added successfully', 'success');
+            } catch (error) {
+                showNotification('Error adding item: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Sales Management
+        async function loadSales() {
+            if (!currentCompany) return;
+            
+            try {
+                const q = window.firebase.query(
+                    window.firebase.collection(window.firebase.db, 'sales'),
+                    window.firebase.where('companyId', '==', currentCompany),
+                    window.firebase.orderBy('date', 'desc'),
+                    window.firebase.limit(50)
+                );
+                
+                const querySnapshot = await window.firebase.getDocs(q);
+                sales = [];
+                
+                querySnapshot.forEach((doc) => {
+                    sales.push({ id: doc.id, ...doc.data() });
+                });
+                
+                updateSalesTable();
+                updateSalesStats();
+            } catch (error) {
+                console.error('Error loading sales:', error);
+            }
+        }
+
+        function updateSalesTable() {
+            const tbody = document.getElementById('salesTable');
+            
+            if (sales.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <div class="empty-state-icon">💰</div>
+                            <p>No sales transactions found</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = sales.map(sale => `
+                <tr>
+                    <td>${sale.transactionId}</td>
+                    <td>${new Date(sale.date?.seconds * 1000 || Date.now()).toLocaleString()}</td>
+                    <td>${sale.itemSKU}</td>
+                    <td>${sale.itemName}</td>
+                    <td>${sale.quantity}</td>
+                    <td>${sale.unitPrice.toFixed(2)}</td>
+                    <td>${sale.total.toFixed(2)}</td>
+                    <td>${sale.customer}</td>
+                    <td><span class="stat-change positive">Completed</span></td>
+                </tr>
+            `).join('');
+        }
+
+        function updateSalesStats() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const todaySales = sales.filter(sale => {
+                const saleDate = new Date(sale.date?.seconds * 1000 || 0);
+                saleDate.setHours(0, 0, 0, 0);
+                return saleDate.getTime() === today.getTime();
+            });
+            
+            const todayTotal = todaySales.reduce((sum, sale) => sum + sale.total, 0);
+            document.getElementById('todaysSales').textContent = `${todayTotal.toFixed(2)}`;
+            
+            const todayUnits = todaySales.reduce((sum, sale) => sum + sale.quantity, 0);
+            document.getElementById('unitsSoldToday').textContent = todayUnits;
+            
+            const avgValue = todaySales.length > 0 ? todayTotal / todaySales.length : 0;
+            document.getElementById('avgOrderValue').textContent = `${avgValue.toFixed(2)}`;
+            
+            document.getElementById('totalTransactions').textContent = sales.length;
+        }
+
+        function showAddSaleModal() {
+            const modalBody = `
+                <form onsubmit="handleAddSale(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Item SKU</label>
+                            <select class="form-select" id="saleSKU" onchange="updateSaleItemDetails()" required>
+                                <option value="">Select Item</option>
+                                ${inventory.map(item => 
+                                    `<option value="${item.sku}" data-name="${item.name}" data-price="${item.unitPrice}">${item.sku} - ${item.name}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-input" id="saleQuantity" required min="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Customer</label>
+                            <input type="text" class="form-input" id="saleCustomer" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Unit Price</label>
+                            <input type="number" class="form-input" id="salePrice" required step="0.01" min="0">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Record Sale</button>
+                    </div>
+                </form>
+            `;
+            showModal('Record Stock Out', modalBody);
+        }
+
+        function updateSaleItemDetails() {
+            const select = document.getElementById('saleSKU');
+            const selectedOption = select.options[select.selectedIndex];
+            if (selectedOption.value) {
+                document.getElementById('salePrice').value = selectedOption.dataset.price;
+            }
+        }
+
+        async function handleAddSale(e) {
+            e.preventDefault();
+            
+            if (!currentCompany) {
+                showNotification('Please select a company first', 'error');
+                return;
+            }
+            
+            const select = document.getElementById('saleSKU');
+            const selectedOption = select.options[select.selectedIndex];
+            const quantity = parseInt(document.getElementById('saleQuantity').value);
+            const unitPrice = parseFloat(document.getElementById('salePrice').value);
+            
+            const saleData = {
+                transactionId: `TXN-${Date.now()}`,
+                itemSKU: select.value,
+                itemName: selectedOption.dataset.name,
+                quantity: quantity,
+                unitPrice: unitPrice,
+                total: quantity * unitPrice,
+                customer: document.getElementById('saleCustomer').value,
+                companyId: currentCompany,
+                date: window.firebase.serverTimestamp()
+            };
+            
+            showLoading(true);
+            try {
+                // Add sale record
+                await window.firebase.addDoc(window.firebase.collection(window.firebase.db, 'sales'), saleData);
+                
+                // Update inventory
+                const inventoryItem = inventory.find(item => item.sku === select.value);
+                if (inventoryItem) {
+                    await window.firebase.updateDoc(
+                        window.firebase.doc(window.firebase.db, 'inventory', inventoryItem.id),
+                        {
+                            quantity: inventoryItem.quantity - quantity,
+                            updatedAt: window.firebase.serverTimestamp()
+                        }
+                    );
+                }
+                
+                closeModal();
+                await loadSales();
+                await loadInventory();
+                showNotification('Sale recorded successfully', 'success');
+            } catch (error) {
+                showNotification('Error recording sale: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Orders Management
+        async function loadOrders() {
+            if (!currentCompany) return;
+            
+            try {
+                const q = window.firebase.query(
+                    window.firebase.collection(window.firebase.db, 'orders'),
+                    window.firebase.where('companyId', '==', currentCompany),
+                    window.firebase.orderBy('orderDate', 'desc')
+                );
+                
+                const querySnapshot = await window.firebase.getDocs(q);
+                orders = [];
+                
+                querySnapshot.forEach((doc) => {
+                    orders.push({ id: doc.id, ...doc.data() });
+                });
+                
+                updateOrdersTable();
+                updateOrdersStats();
+            } catch (error) {
+                console.error('Error loading orders:', error);
+            }
+        }
+
+        function updateOrdersTable() {
+            const tbody = document.getElementById('ordersTable');
+            
+            if (orders.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <div class="empty-state-icon">📝</div>
+                            <p>No orders found</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = orders.map(order => `
+                <tr>
+                    <td>${order.orderId}</td>
+                    <td>${order.customer}</td>
+                    <td>${order.items} items</td>
+                    <td>${order.total.toFixed(2)}</td>
+                    <td>${new Date(order.orderDate?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
+                    <td><span class="stat-change ${order.status === 'Pending' ? 'negative' : 'positive'}">${order.status}</span></td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding: 0.5rem; font-size: 0.9rem;" 
+                                onclick="updateOrderStatus('${order.id}')">Update</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateOrdersStats() {
+            document.getElementById('totalOrders').textContent = orders.length;
+            
+            const pending = orders.filter(order => order.status === 'Pending').length;
+            document.getElementById('pendingOrdersCount').textContent = pending;
+            
+            const completed = orders.filter(order => order.status === 'Completed').length;
+            document.getElementById('completedOrders').textContent = completed;
+            
+            const totalValue = orders.reduce((sum, order) => sum + order.total, 0);
+            document.getElementById('totalOrderValue').textContent = `${totalValue.toFixed(2)}`;
+        }
+
+        function showNewOrderModal() {
+            const modalBody = `
+                <form onsubmit="handleNewOrder(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Customer Name</label>
+                            <input type="text" class="form-input" id="orderCustomer" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Number of Items</label>
+                            <input type="number" class="form-input" id="orderItems" required min="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Total Amount</label>
+                            <input type="number" class="form-input" id="orderTotal" required step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Delivery Date</label>
+                            <input type="date" class="form-input" id="orderDelivery" required>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create Order</button>
+                    </div>
+                </form>
+            `;
+            showModal('New Sales Order', modalBody);
+        }
+
+        async function handleNewOrder(e) {
+            e.preventDefault();
+            
+            if (!currentCompany) {
+                showNotification('Please select a company first', 'error');
+                return;
+            }
+            
+            const orderData = {
+                orderId: `ORD-${Date.now()}`,
+                customer: document.getElementById('orderCustomer').value,
+                items: parseInt(document.getElementById('orderItems').value),
+                total: parseFloat(document.getElementById('orderTotal').value),
+                deliveryDate: document.getElementById('orderDelivery').value,
+                status: 'Pending',
+                companyId: currentCompany,
+                orderDate: window.firebase.serverTimestamp()
+            };
+            
+            showLoading(true);
+            try {
+                await window.firebase.addDoc(window.firebase.collection(window.firebase.db, 'orders'), orderData);
+                closeModal();
+                await loadOrders();
+                showNotification('Order created successfully', 'success');
+            } catch (error) {
+                showNotification('Error creating order: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Purchase Management
+        async function loadPurchases() {
+            if (!currentCompany) return;
+            
+            try {
+                const q = window.firebase.query(
+                    window.firebase.collection(window.firebase.db, 'purchases'),
+                    window.firebase.where('companyId', '==', currentCompany),
+                    window.firebase.orderBy('date', 'desc')
+                );
+                
+                const querySnapshot = await window.firebase.getDocs(q);
+                purchases = [];
+                
+                querySnapshot.forEach((doc) => {
+                    purchases.push({ id: doc.id, ...doc.data() });
+                });
+                
+                updatePurchaseTable();
+                updatePurchaseStats();
+            } catch (error) {
+                console.error('Error loading purchases:', error);
+            }
+        }
+
+        function updatePurchaseTable() {
+            const tbody = document.getElementById('purchaseTable');
+            
+            if (purchases.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <div class="empty-state-icon">🛒</div>
+                            <p>No purchase records found</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = purchases.map(purchase => `
+                <tr>
+                    <td>${purchase.poNumber}</td>
+                    <td>${purchase.supplier}</td>
+                    <td>${purchase.items} units</td>
+                    <td>${purchase.totalCost.toFixed(2)}</td>
+                    <td>${new Date(purchase.date?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
+                    <td><span class="stat-change ${purchase.status === 'Pending' ? 'negative' : 'positive'}">${purchase.status}</span></td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding: 0.5rem; font-size: 0.9rem;" 
+                                onclick="viewPurchase('${purchase.id}')">View</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updatePurchaseStats() {
+            const totalPurchases = purchases.reduce((sum, p) => sum + p.totalCost, 0);
+            document.getElementById('totalPurchases').textContent = `${totalPurchases.toFixed(2)}`;
+            
+            const activePOs = purchases.filter(p => p.status === 'Pending').length;
+            document.getElementById('activePOs').textContent = activePOs;
+            
+            const suppliers = [...new Set(purchases.map(p => p.supplier))].length;
+            document.getElementById('suppliersCount').textContent = suppliers;
+            
+            const totalItems = purchases.reduce((sum, p) => sum + p.items, 0);
+            document.getElementById('itemsPurchased').textContent = totalItems;
+        }
+
+        function showAddPurchaseModal() {
+            const modalBody = `
+                <form onsubmit="handleAddPurchase(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Supplier</label>
+                            <input type="text" class="form-input" id="purchaseSupplier" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Item SKU</label>
+                            <input type="text" class="form-input" id="purchaseSKU" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Item Name</label>
+                            <input type="text" class="form-input" id="purchaseItemName" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-input" id="purchaseQuantity" required min="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Unit Cost</label>
+                            <input type="number" class="form-input" id="purchaseUnitCost" required step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <input type="text" class="form-input" id="purchaseCategory" required>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Record Purchase</button>
+                    </div>
+                </form>
+            `;
+            showModal('Record Stock In', modalBody);
+        }
+
+        async function handleAddPurchase(e) {
+            e.preventDefault();
+            
+            if (!currentCompany) {
+                showNotification('Please select a company first', 'error');
+                return;
+            }
+            
+            const quantity = parseInt(document.getElementById('purchaseQuantity').value);
+            const unitCost = parseFloat(document.getElementById('purchaseUnitCost').value);
+            const sku = document.getElementById('purchaseSKU').value;
+            
+            const purchaseData = {
+                poNumber: `PO-${Date.now()}`,
+                supplier: document.getElementById('purchaseSupplier').value,
+                items: quantity,
+                totalCost: quantity * unitCost,
+                status: 'Received',
+                companyId: currentCompany,
+                date: window.firebase.serverTimestamp()
+            };
+            
+            showLoading(true);
+            try {
+                // Add purchase record
+                await window.firebase.addDoc(window.firebase.collection(window.firebase.db, 'purchases'), purchaseData);
+                
+                // Check if item exists in inventory
+                const existingItem = inventory.find(item => item.sku === sku);
+                
+                if (existingItem) {
+                    // Update existing inventory
+                    await window.firebase.updateDoc(
+                        window.firebase.doc(window.firebase.db, 'inventory', existingItem.id),
+                        {
+                            quantity: existingItem.quantity + quantity,
+                            unitPrice: unitCost,
+                            updatedAt: window.firebase.serverTimestamp()
+                        }
+                    );
+                } else {
+                    // Add new inventory item
+                    await window.firebase.addDoc(window.firebase.collection(window.firebase.db, 'inventory'), {
+                        sku: sku,
+                        name: document.getElementById('purchaseItemName').value,
+                        category: document.getElementById('purchaseCategory').value,
+                        quantity: quantity,
+                        unitPrice: unitCost,
+                        location: '',
+                        companyId: currentCompany,
+                        createdAt: window.firebase.serverTimestamp(),
+                        updatedAt: window.firebase.serverTimestamp()
+                    });
+                }
+                
+                closeModal();
+                await loadPurchases();
+                await loadInventory();
+                showNotification('Purchase recorded successfully', 'success');
+            } catch (error) {
+                showNotification('Error recording purchase: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Section Navigation
+        function showSection(sectionId, linkElement) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(sectionId).classList.add('active');
+            
+            // Update navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            linkElement.classList.add('active');
+            
+            // Update page title
+            const titles = {
+                'dashboard': 'Dashboard',
+                'forecast': 'Stock Forecast',
+                'inventory': 'Inventory Management',
+                'sales': 'Sales Management',
+                'sales-order': 'Sales Orders',
+                'purchase': 'Purchase Management',
+                'settings': 'Settings'
+            };
+            document.getElementById('pageTitle').textContent = titles[sectionId];
+            currentSection = sectionId;
+            
+            // Load section-specific data
+            if (sectionId === 'dashboard') {
+                loadDashboardData();
+            } else if (sectionId === 'inventory') {
+                loadInventory();
+            } else if (sectionId === 'sales') {
+                loadSales();
+            } else if (sectionId === 'sales-order') {
+                loadOrders();
+            } else if (sectionId === 'purchase') {
+                loadPurchases();
+            }
+        }
+
+        // Utility Functions
+        function showModal(title, body) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalBody').innerHTML = body;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+            
+            notificationText.textContent = message;
+            notification.className = 'notification show ' + type;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        function showLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) {
+                overlay.classList.add('active');
+            } else {
+                overlay.classList.remove('active');
+            }
+        }
+
+        // Export Functions
+        function exportCSV(type) {
+            let data = [];
+            let filename = '';
+            
+            switch(type) {
+                case 'inventory':
+                    data = inventory;
+                    filename = 'inventory';
+                    break;
+                case 'sales':
+                    data = sales;
+                    filename = 'sales';
+                    break;
+                case 'orders':
+                    data = orders;
+                    filename = 'orders';
+                    break;
+                case 'purchase':
+                    data = purchases;
+                    filename = 'purchases';
+                    break;
+            }
+            
+            if (data.length === 0) {
+                showNotification('No data to export', 'warning');
+                return;
+            }
+            
+            // Convert to CSV
+            const headers = Object.keys(data[0]).filter(key => key !== 'id' && key !== 'companyId');
+            const csvContent = [
+                headers.join(','),
+                ...data.map(row => headers.map(header => {
+                    const value = row[header];
+                    if (value?.seconds) {
+                        return new Date(value.seconds * 1000).toISOString();
+                    }
+                    return value || '';
+                }).join(','))
+            ].join('\n');
+            
+            // Download
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            showNotification('Data exported successfully', 'success');
+        }
+
+        // Forecast Functions
+        function generateForecast() {
+            showNotification('Generating forecast report...', 'success');
+            
+            // Simple forecast calculation based on sales data
+            const avgDemand = Math.floor(Math.random() * 1000) + 500;
+            const recommendedOrder = Math.floor(avgDemand * 0.7);
+            const coverage = Math.floor(Math.random() * 30) + 30;
+            
+            document.getElementById('predictedDemand').textContent = avgDemand;
+            document.getElementById('recommendedOrder').textContent = recommendedOrder;
+            document.getElementById('stockCoverage').textContent = coverage;
+        }
+
+        // Search Functions
+        function searchInventory() {
+            const searchTerm = document.getElementById('inventorySearch').value.toLowerCase();
+            const category = document.getElementById('inventoryCategory').value;
+            
+            let filtered = inventory;
+            
+            if (searchTerm) {
+                filtered = filtered.filter(item => 
+                    item.name.toLowerCase().includes(searchTerm) || 
+                    item.sku.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            if (category !== 'All Categories') {
+                filtered = filtered.filter(item => item.category === category);
+            }
+            
+            // Update table with filtered results
+            const tbody = document.getElementById('inventoryTable');
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="empty-state">No items found matching your search</td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = filtered.map(item => `
+                    <tr>
+                        <td>${item.sku}</td>
+                        <td>${item.name}</td>
+                        <td>${item.category}</td>
+                        <td>${item.quantity}</td>
+                        <td>${item.unitPrice.toFixed(2)}</td>
+                        <td>${(item.quantity * item.unitPrice).toFixed(2)}</td>
+                        <td>${new Date(item.updatedAt?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
+                        <td>
+                            <button class="btn btn-secondary" style="padding: 0.5rem; font-size: 0.9rem;" 
+                                    onclick="editInventoryItem('${item.id}')">Edit</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+            
+            showNotification(`Found ${filtered.length} items`, 'success');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Attach login form handler
+            document.getElementById('loginForm').addEventListener('submit', login);
+            
+            // Set default dates
+            const today = new Date().toISOString().split('T')[0];
+            document.querySelectorAll('input[type="date"]').forEach(input => {
+                if (input.id.includes('End') || input.id.includes('To')) {
+                    input.value = today;
+                } else if (input.id.includes('Start') || input.id.includes('From')) {
+                    const lastMonth = new Date();
+                    lastMonth.setMonth(lastMonth.getMonth() - 1);
+                    input.value = lastMonth.toISOString().split('T')[0];
+                }
+            });
+        });
+    </script>
+</body>
+</html>
