@@ -1034,6 +1034,24 @@
                     <button class="btn btn-success" onclick="showAddSaleModal()">+ Record Sale</button>
                 </div>
 
+                  <div class="filter-section">
+                    <div class="filter-grid">
+                        <div class="form-group">
+                            <label class="form-label">Search Item/Customer</label>
+                            <input type="text" class="form-input" id="salesSearch" placeholder="Enter item name, SKU or customer">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" class="form-input" id="salesStartDate">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">End Date</label>
+                            <input type="date" class="form-input" id="salesEndDate">
+                        </div>
+                        <button class="btn btn-primary" onclick="searchSales()">🔍 Search</button>
+                    </div>
+                </div>
+                
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-label">Today's Sales</div>
@@ -1092,6 +1110,24 @@
                     <button class="btn btn-secondary" onclick="exportCSV('orders')">📤 Export Orders</button>
                 </div>
 
+                <div class="filter-section">
+                    <div class="filter-grid">
+                        <div class="form-group">
+                            <label class="form-label">Search Order/Customer</label>
+                            <input type="text" class="form-input" id="ordersSearch" placeholder="Enter order ID or customer">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" class="form-input" id="ordersStartDate">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">End Date</label>
+                            <input type="date" class="form-input" id="ordersEndDate">
+                        </div>
+                        <button class="btn btn-primary" onclick="searchOrders()">🔍 Search</button>
+                    </div>
+                </div>
+
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-label">Total Orders</div>
@@ -1148,6 +1184,24 @@
                 <div class="action-buttons">
                     <button class="btn btn-success" onclick="showAddPurchaseModal()">+ New Purchase</button>
                     <button class="btn btn-secondary" onclick="exportCSV('purchase')">📤 Export Purchases</button>
+                </div>
+                
+                <div class="filter-section">
+                    <div class="filter-grid">
+                        <div class="form-group">
+                            <label class="form-label">Search Item/Supplier</label>
+                            <input type="text" class="form-input" id="purchaseSearch" placeholder="Enter item name, SKU or supplier">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" class="form-input" id="purchaseStartDate">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">End Date</label>
+                            <input type="date" class="form-input" id="purchaseEndDate">
+                        </div>
+                        <button class="btn btn-primary" onclick="searchPurchases()">🔍 Search</button>
+                    </div>
                 </div>
 
                 <div class="stats-grid">
@@ -1755,9 +1809,9 @@
                     <td>${item.name}</td>
                     <td>${item.category}</td>
                     <td>${item.quantity}</td>
-                    <td>${item.unitPrice.toFixed(2)}</td>
-                    <td>${(item.quantity * item.unitPrice).toFixed(2)}</td>
-                    <td>${new Date(item.updatedAt?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
+                    <td>$${item.unitPrice.toFixed(2)}</td>
+                    <td>$${(item.quantity * item.unitPrice).toFixed(2)}</td>
+                    <td>${new Date(item.updatedAt?.seconds * 1000 || Date.now()).toLocaleDateString()} ${new Date(item.updatedAt?.seconds * 1000 || Date.now()).toLocaleTimeString()}</td>
                     <td>
                         <button class="btn btn-secondary" style="padding: 0.5rem; font-size: 0.9rem;" 
                                 onclick="editInventoryItem('${item.id}')">Edit</button>
@@ -1765,6 +1819,7 @@
                 </tr>
             `).join('');
         }
+
 
         function updateInventoryStats() {
             const totalValue = inventory.reduce((sum, item) => 
@@ -1894,17 +1949,18 @@
             tbody.innerHTML = sales.map(sale => `
                 <tr>
                     <td>${sale.transactionId}</td>
-                    <td>${new Date(sale.date?.seconds * 1000 || Date.now()).toLocaleString()}</td>
+                    <td>${new Date(sale.date?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
+                    <td>${sale.customer}</td>
                     <td>${sale.itemSKU}</td>
                     <td>${sale.itemName}</td>
                     <td>${sale.quantity}</td>
-                    <td>${sale.unitPrice.toFixed(2)}</td>
-                    <td>${sale.total.toFixed(2)}</td>
-                    <td>${sale.customer}</td>
+                    <td>$${sale.unitPrice.toFixed(2)}</td>
+                    <td>$${sale.total.toFixed(2)}</td>
                     <td><span class="stat-change positive">Completed</span></td>
                 </tr>
             `).join('');
         }
+
 
         function updateSalesStats() {
             const today = new Date();
@@ -2100,10 +2156,10 @@
             tbody.innerHTML = orders.map(order => `
                 <tr>
                     <td>${order.orderId}</td>
+                    <td>${new Date(order.orderDate?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
                     <td>${order.customer}</td>
                     <td>${order.items} items</td>
-                    <td>${order.total.toFixed(2)}</td>
-                    <td>${new Date(order.orderDate?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
+                    <td>$${order.total.toFixed(2)}</td>
                     <td><span class="stat-change ${order.status === 'Pending' ? 'negative' : 'positive'}">${order.status}</span></td>
                     <td>
                         <button class="btn btn-secondary" style="padding: 0.5rem; font-size: 0.9rem;" 
@@ -2112,6 +2168,63 @@
                 </tr>
             `).join('');
         }
+
+        function searchOrders() {
+            const searchTerm = document.getElementById('ordersSearch').value.toLowerCase();
+            const startDate = document.getElementById('ordersStartDate').value;
+            const endDate = document.getElementById('ordersEndDate').value;
+            
+            let filtered = orders;
+            
+            if (searchTerm) {
+                filtered = filtered.filter(order => 
+                    order.orderId.toLowerCase().includes(searchTerm) || 
+                    order.customer.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            if (startDate) {
+                filtered = filtered.filter(order => {
+                    const orderDate = new Date(order.orderDate?.seconds * 1000 || 0);
+                    return orderDate >= new Date(startDate);
+                });
+            }
+            
+            if (endDate) {
+                filtered = filtered.filter(order => {
+                    const orderDate = new Date(order.orderDate?.seconds * 1000 || 0);
+                    return orderDate <= new Date(endDate + 'T23:59:59');
+                });
+            }
+            
+            // Update table with filtered results
+            const tbody = document.getElementById('ordersTable');
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="empty-state">No orders found matching your search</td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = filtered.map(order => `
+                    <tr>
+                        <td>${order.orderId}</td>
+                        <td>${new Date(order.orderDate?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
+                        <td>${order.customer}</td>
+                        <td>${order.items} items</td>
+                        <td>$${order.total.toFixed(2)}</td>
+                        <td><span class="stat-change ${order.status === 'Pending' ? 'negative' : 'positive'}">${order.status}</span></td>
+                        <td>
+                            <button class="btn btn-secondary" style="padding: 0.5rem; font-size: 0.9rem;" 
+                                    onclick="updateOrderStatus('${order.id}')">Update</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+            
+            showNotification(`Found ${filtered.length} orders`, 'success');
+        }
+
 
         function updateOrdersStats() {
             document.getElementById('totalOrders').textContent = orders.length;
@@ -2293,12 +2406,69 @@
                     <td>${purchase.sku}</td>
                     <td>${purchase.itemName}</td>
                     <td>${purchase.quantity}</td>
-                    <td>${purchase.price}</td>
-                    <td>${purchase.amount || purchase.totalCost}</td>
+                    <td>$${purchase.price}</td>
+                    <td>$${purchase.amount || purchase.totalCost}</td>
                     <td><span class="stat-change ${purchase.status === 'Pending' ? 'negative' : 'positive'}">${purchase.status}</span></td>
                 </tr>
             `).join('');
         }
+
+        function searchPurchases() {
+            const searchTerm = document.getElementById('purchaseSearch').value.toLowerCase();
+            const startDate = document.getElementById('purchaseStartDate').value;
+            const endDate = document.getElementById('purchaseEndDate').value;
+            
+            let filtered = purchases;
+            
+            if (searchTerm) {
+                filtered = filtered.filter(purchase => 
+                    purchase.itemName.toLowerCase().includes(searchTerm) || 
+                    purchase.sku.toLowerCase().includes(searchTerm) ||
+                    (purchase.supplierName || purchase.supplier).toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            if (startDate) {
+                filtered = filtered.filter(purchase => {
+                    const purchaseDate = new Date(purchase.purchaseDate || purchase.date?.seconds * 1000 || 0);
+                    return purchaseDate >= new Date(startDate);
+                });
+            }
+            
+            if (endDate) {
+                filtered = filtered.filter(purchase => {
+                    const purchaseDate = new Date(purchase.purchaseDate || purchase.date?.seconds * 1000 || 0);
+                    return purchaseDate <= new Date(endDate + 'T23:59:59');
+                });
+            }
+            
+            // Update table with filtered results
+            const tbody = document.getElementById('purchaseTable');
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-state">No purchase records found matching your search</td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = filtered.map(purchase => `
+                    <tr>
+                        <td>${purchase.poNo || purchase.poNumber}</td>
+                        <td>${new Date(purchase.purchaseDate || purchase.date?.seconds * 1000).toLocaleDateString()}</td>
+                        <td>${purchase.supplierName || purchase.supplier}</td>
+                        <td>${purchase.sku}</td>
+                        <td>${purchase.itemName}</td>
+                        <td>${purchase.quantity}</td>
+                        <td>$${purchase.price}</td>
+                        <td>$${purchase.amount || purchase.totalCost}</td>
+                        <td><span class="stat-change ${purchase.status === 'Pending' ? 'negative' : 'positive'}">${purchase.status}</span></td>
+                    </tr>
+                `).join('');
+            }
+            
+            showNotification(`Found ${filtered.length} purchase records`, 'success');
+        }
+
 
 
         function updatePurchaseTable() {
@@ -2866,6 +3036,63 @@
             
             showNotification(`Found ${filtered.length} items`, 'success');
         }
+
+        function searchSales() {
+            const searchTerm = document.getElementById('salesSearch').value.toLowerCase();
+            const startDate = document.getElementById('salesStartDate').value;
+            const endDate = document.getElementById('salesEndDate').value;
+            
+            let filtered = sales;
+            
+            if (searchTerm) {
+                filtered = filtered.filter(sale => 
+                    sale.itemName.toLowerCase().includes(searchTerm) || 
+                    sale.itemSKU.toLowerCase().includes(searchTerm) ||
+                    sale.customer.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            if (startDate) {
+                filtered = filtered.filter(sale => {
+                    const saleDate = new Date(sale.date?.seconds * 1000 || 0);
+                    return saleDate >= new Date(startDate);
+                });
+            }
+            
+            if (endDate) {
+                filtered = filtered.filter(sale => {
+                    const saleDate = new Date(sale.date?.seconds * 1000 || 0);
+                    return saleDate <= new Date(endDate + 'T23:59:59');
+                });
+            }
+            
+            // Update table with filtered results
+            const tbody = document.getElementById('salesTable');
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-state">No sales records found matching your search</td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = filtered.map(sale => `
+                    <tr>
+                        <td>${sale.transactionId}</td>
+                        <td>${new Date(sale.date?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
+                        <td>${sale.customer}</td>
+                        <td>${sale.itemSKU}</td>
+                        <td>${sale.itemName}</td>
+                        <td>${sale.quantity}</td>
+                        <td>$${sale.unitPrice.toFixed(2)}</td>
+                        <td>$${sale.total.toFixed(2)}</td>
+                        <td><span class="stat-change positive">Completed</span></td>
+                    </tr>
+                `).join('');
+            }
+            
+            showNotification(`Found ${filtered.length} sales records`, 'success');
+        }
+
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
