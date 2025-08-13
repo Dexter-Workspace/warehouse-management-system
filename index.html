@@ -1312,12 +1312,12 @@
         // Your Firebase configuration
         // REPLACE WITH YOUR ACTUAL FIREBASE CONFIG
         const firebaseConfig = {
-            apiKey: "AIzaSyDtQO34xj_F0Yvn8EeBGKbhsDr11LxH_p8",
-            authDomain: "warehouse-management-sys-13896.firebaseapp.com",
-            projectId: "warehouse-management-sys-13896",
-            storageBucket: "warehouse-management-sys-13896.firebasestorage.app",
-            messagingSenderId: "982323352884",
-            appId: "1:982323352884:web:34709f57bb6268e056c161"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
         // Initialize Firebase
@@ -1349,12 +1349,25 @@
 
         // Initialize auth state listener
         onAuthStateChanged(auth, (user) => {
+            console.log('Auth state changed:', user ? user.email : 'No user');
             if (user) {
                 window.currentUser = user;
                 showApp();
-                loadUserData();
+                loadUserData().then(() => {
+                    console.log('User data loaded');
+                }).catch(error => {
+                    console.error('Error loading user data:', error);
+                });
             } else {
                 window.currentUser = null;
+                // Clear stored data
+                localStorage.removeItem('selectedCompanyId');
+                currentCompany = null;
+                companies = [];
+                inventory = [];
+                sales = [];
+                orders = [];
+                purchases = [];
                 showLogin();
             }
         });
@@ -1412,7 +1425,17 @@
             if (confirm('Are you sure you want to logout?')) {
                 showLoading(true);
                 try {
+                    // Clear localStorage
+                    localStorage.removeItem('selectedCompanyId');
+                    // Sign out
                     await window.firebase.signOut(window.firebase.auth);
+                    // Clear global variables
+                    currentCompany = null;
+                    companies = [];
+                    inventory = [];
+                    sales = [];
+                    orders = [];
+                    purchases = [];
                     showNotification('Logged out successfully', 'success');
                 } catch (error) {
                     showNotification(error.message, 'error');
@@ -1471,12 +1494,18 @@
             const userEmail = window.currentUser.email;
             document.getElementById('userDisplay').textContent = `Welcome, ${userEmail}`;
             document.getElementById('userAvatar').textContent = userEmail.charAt(0).toUpperCase();
-            document.getElementById('profileEmail').value = userEmail;
             
-            // Load companies
+            // Set profile email if element exists
+            const profileEmailElement = document.getElementById('profileEmail');
+            if (profileEmailElement) {
+                profileEmailElement.value = userEmail;
+            }
+            
+            // Load companies first
             await loadCompanies();
             
-            // Load initial data
+            // Load dashboard data after companies are loaded
+            // This ensures currentCompany is set
             if (currentCompany) {
                 await loadDashboardData();
             }
@@ -1484,6 +1513,11 @@
 
         // Company Management
         async function loadCompanies() {
+            if (!window.currentUser) {
+                console.error('No user logged in');
+                return;
+            }
+            
             try {
                 const q = window.firebase.query(
                     window.firebase.collection(window.firebase.db, 'companies'),
@@ -1497,15 +1531,28 @@
                     companies.push({ id: doc.id, ...doc.data() });
                 });
                 
+                console.log('Loaded companies:', companies.length);
+                
                 updateCompanySelector();
                 updateCompaniesTable();
                 
-                if (companies.length > 0 && !currentCompany) {
+                // Restore previously selected company from localStorage or select first
+                const savedCompanyId = localStorage.getItem('selectedCompanyId');
+                if (savedCompanyId && companies.find(c => c.id === savedCompanyId)) {
+                    currentCompany = savedCompanyId;
+                } else if (companies.length > 0) {
                     currentCompany = companies[0].id;
+                }
+                
+                if (currentCompany) {
                     document.getElementById('companySelect').value = currentCompany;
+                    // Save to localStorage for persistence
+                    localStorage.setItem('selectedCompanyId', currentCompany);
+                    console.log('Selected company:', currentCompany);
                 }
             } catch (error) {
                 console.error('Error loading companies:', error);
+                showNotification('Error loading companies: ' + error.message, 'error');
             }
         }
 
@@ -1593,6 +1640,8 @@
         function switchCompany() {
             currentCompany = document.getElementById('companySelect').value;
             if (currentCompany) {
+                // Save to localStorage for persistence
+                localStorage.setItem('selectedCompanyId', currentCompany);
                 loadDashboardData();
                 showNotification('Switched company', 'success');
             }
@@ -1601,18 +1650,31 @@
         // Dashboard Data
         async function loadDashboardData() {
             if (!currentCompany) {
+                console.log('No company selected, cannot load dashboard data');
                 showNotification('Please select or create a company first', 'warning');
+                // Redirect to settings to create a company
+                if (companies.length === 0) {
+                    showSection('settings', document.querySelector('.nav-link[onclick*="settings"]'));
+                }
                 return;
             }
             
-            await Promise.all([
-                loadInventory(),
-                loadSales(),
-                loadOrders(),
-                loadPurchases()
-            ]);
+            console.log('Loading dashboard data for company:', currentCompany);
             
-            updateDashboardStats();
+            try {
+                await Promise.all([
+                    loadInventory(),
+                    loadSales(),
+                    loadOrders(),
+                    loadPurchases()
+                ]);
+                
+                updateDashboardStats();
+                console.log('Dashboard data loaded successfully');
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                showNotification('Error loading data: ' + error.message, 'error');
+            }
         }
 
         function updateDashboardStats() {
@@ -1636,9 +1698,14 @@
 
         // Inventory Management
         async function loadInventory() {
-            if (!currentCompany) return;
+            if (!currentCompany) {
+                console.log('No company selected for inventory load');
+                return;
+            }
             
             try {
+                console.log('Loading inventory for company:', currentCompany);
+                
                 const q = window.firebase.query(
                     window.firebase.collection(window.firebase.db, 'inventory'),
                     window.firebase.where('companyId', '==', currentCompany)
@@ -1648,13 +1715,17 @@
                 inventory = [];
                 
                 querySnapshot.forEach((doc) => {
-                    inventory.push({ id: doc.id, ...doc.data() });
+                    const data = doc.data();
+                    inventory.push({ id: doc.id, ...data });
                 });
+                
+                console.log('Loaded inventory items:', inventory.length);
                 
                 updateInventoryTable();
                 updateInventoryStats();
             } catch (error) {
                 console.error('Error loading inventory:', error);
+                showNotification('Error loading inventory: ' + error.message, 'error');
             }
         }
 
@@ -2256,6 +2327,14 @@
 
         // Section Navigation
         function showSection(sectionId, linkElement) {
+            // Check if company is selected
+            if (!currentCompany && sectionId !== 'settings') {
+                showNotification('Please select or create a company first', 'warning');
+                // Redirect to settings
+                showSection('settings', document.querySelector('.nav-link[onclick*="settings"]'));
+                return;
+            }
+            
             // Hide all sections
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
@@ -2268,7 +2347,9 @@
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
             });
-            linkElement.classList.add('active');
+            if (linkElement) {
+                linkElement.classList.add('active');
+            }
             
             // Update page title
             const titles = {
@@ -2283,17 +2364,27 @@
             document.getElementById('pageTitle').textContent = titles[sectionId];
             currentSection = sectionId;
             
-            // Load section-specific data
-            if (sectionId === 'dashboard') {
-                loadDashboardData();
-            } else if (sectionId === 'inventory') {
-                loadInventory();
-            } else if (sectionId === 'sales') {
-                loadSales();
-            } else if (sectionId === 'sales-order') {
-                loadOrders();
-            } else if (sectionId === 'purchase') {
-                loadPurchases();
+            // Load section-specific data with company check
+            if (currentCompany) {
+                console.log(`Loading data for section: ${sectionId}, company: ${currentCompany}`);
+                
+                switch(sectionId) {
+                    case 'dashboard':
+                        loadDashboardData();
+                        break;
+                    case 'inventory':
+                        loadInventory();
+                        break;
+                    case 'sales':
+                        loadSales();
+                        break;
+                    case 'sales-order':
+                        loadOrders();
+                        break;
+                    case 'purchase':
+                        loadPurchases();
+                        break;
+                }
             }
         }
 
@@ -2383,39 +2474,169 @@
             
             showNotification('Data exported successfully', 'success');
         }
-        
+
+        // Import CSV Functions
         async function importCSV(type) {
             const fileInput = document.getElementById(type + 'Import');
             const file = fileInput.files[0];
             
-            if (!file) return;
+            if (!file) {
+                showNotification('Please select a file', 'warning');
+                return;
+            }
+            
+            if (!currentCompany) {
+                showNotification('Please select a company first', 'error');
+                return;
+            }
+            
+            showLoading(true);
             
             const reader = new FileReader();
             reader.onload = async function(e) {
-                const csv = e.target.result;
-                const lines = csv.split('\n');
-                const headers = lines[0].split(',');
-                
-                for (let i = 1; i < lines.length; i++) {
-                    const data = lines[i].split(',');
-                    if (data.length === headers.length) {
+                try {
+                    const csv = e.target.result;
+                    const lines = csv.split('\n').filter(line => line.trim() !== '');
+                    
+                    if (lines.length < 2) {
+                        showNotification('CSV file is empty or invalid', 'error');
+                        showLoading(false);
+                        return;
+                    }
+                    
+                    const headers = lines[0].split(',').map(h => h.trim());
+                    let successCount = 0;
+                    let errorCount = 0;
+                    
+                    // Process based on type
+                    for (let i = 1; i < lines.length; i++) {
+                        const data = parseCSVLine(lines[i]);
+                        
+                        if (data.length !== headers.length) {
+                            errorCount++;
+                            continue;
+                        }
+                        
                         const item = {};
                         headers.forEach((header, index) => {
-                            item[header.trim()] = data[index].trim();
+                            const value = data[index].trim();
+                            // Convert numeric fields
+                            if (['quantity', 'items', 'unitPrice', 'total', 'totalCost'].includes(header)) {
+                                item[header] = parseFloat(value) || 0;
+                            } else {
+                                item[header] = value;
+                            }
                         });
+                        
+                        // Add required fields
                         item.companyId = currentCompany;
                         item.createdAt = window.firebase.serverTimestamp();
+                        item.updatedAt = window.firebase.serverTimestamp();
                         
-                        await window.firebase.addDoc(
-                            window.firebase.collection(window.firebase.db, type),
-                            item
-                        );
+                        try {
+                            // Add type-specific fields
+                            switch(type) {
+                                case 'inventory':
+                                    if (!item.sku || !item.name) {
+                                        errorCount++;
+                                        continue;
+                                    }
+                                    item.quantity = item.quantity || 0;
+                                    item.unitPrice = item.unitPrice || 0;
+                                    break;
+                                    
+                                case 'sales':
+                                    item.transactionId = item.transactionId || `TXN-${Date.now()}-${i}`;
+                                    item.date = window.firebase.serverTimestamp();
+                                    break;
+                                    
+                                case 'orders':
+                                    item.orderId = item.orderId || `ORD-${Date.now()}-${i}`;
+                                    item.status = item.status || 'Pending';
+                                    item.orderDate = window.firebase.serverTimestamp();
+                                    break;
+                                    
+                                case 'purchase':
+                                    item.poNumber = item.poNumber || `PO-${Date.now()}-${i}`;
+                                    item.status = item.status || 'Received';
+                                    item.date = window.firebase.serverTimestamp();
+                                    break;
+                            }
+                            
+                            await window.firebase.addDoc(
+                                window.firebase.collection(window.firebase.db, type),
+                                item
+                            );
+                            successCount++;
+                        } catch (error) {
+                            console.error('Error importing row:', error);
+                            errorCount++;
+                        }
                     }
+                    
+                    // Reload the relevant data
+                    switch(type) {
+                        case 'inventory':
+                            await loadInventory();
+                            break;
+                        case 'sales':
+                            await loadSales();
+                            break;
+                        case 'orders':
+                            await loadOrders();
+                            break;
+                        case 'purchase':
+                            await loadPurchases();
+                            break;
+                    }
+                    
+                    // Clear the file input
+                    fileInput.value = '';
+                    
+                    // Show results
+                    if (errorCount > 0) {
+                        showNotification(`Import completed: ${successCount} successful, ${errorCount} failed`, 'warning');
+                    } else {
+                        showNotification(`Successfully imported ${successCount} items`, 'success');
+                    }
+                    
+                } catch (error) {
+                    console.error('Import error:', error);
+                    showNotification('Error importing CSV: ' + error.message, 'error');
+                } finally {
+                    showLoading(false);
                 }
-                showNotification('Import completed', 'success');
-                location.reload();
             };
+            
+            reader.onerror = function() {
+                showNotification('Error reading file', 'error');
+                showLoading(false);
+            };
+            
             reader.readAsText(file);
+        }
+        
+        // Helper function to parse CSV line handling commas in quotes
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            
+            result.push(current); // Add the last field
+            return result;
         }
 
         // Forecast Functions
