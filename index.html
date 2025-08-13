@@ -912,7 +912,7 @@
                         <div class="form-group">
                             <label class="form-label">Category</label>
                             <select class="form-select" id="forecastCategory">
-                                <option>All Categories</option>
+                                <option value="">All Categories</option>
                             </select>
                         </div>
                         <button class="btn btn-primary" onclick="generateForecast()">Generate Report</button>
@@ -1781,11 +1781,13 @@
                 
                 updateInventoryTable();
                 updateInventoryStats();
+                updateForecastCategories(); // Add this line
             } catch (error) {
                 console.error('Error loading inventory:', error);
                 showNotification('Error loading inventory: ' + error.message, 'error');
             }
         }
+
 
         function updateInventoryTable() {
             const tbody = document.getElementById('inventoryTable');
@@ -2978,17 +2980,31 @@
 
         // Forecast Functions
         function generateForecast() {
+            const selectedCategory = document.getElementById('forecastCategory').value;
+            const startDate = document.getElementById('forecastStartDate').value;
+            const endDate = document.getElementById('forecastEndDate').value;
+            
             showNotification('Generating forecast report...', 'success');
             
-            // Simple forecast calculation based on sales data
-            const avgDemand = Math.floor(Math.random() * 1000) + 500;
+            // Filter inventory by selected category
+            let filteredInventory = inventory;
+            if (selectedCategory) {
+                filteredInventory = inventory.filter(item => item.category === selectedCategory);
+            }
+            
+            // Simple forecast calculation based on filtered inventory
+            const totalItems = filteredInventory.reduce((sum, item) => sum + item.quantity, 0);
+            const avgDemand = Math.floor(totalItems * 0.3) + Math.floor(Math.random() * 100);
             const recommendedOrder = Math.floor(avgDemand * 0.7);
             const coverage = Math.floor(Math.random() * 30) + 30;
             
             document.getElementById('predictedDemand').textContent = avgDemand;
             document.getElementById('recommendedOrder').textContent = recommendedOrder;
             document.getElementById('stockCoverage').textContent = coverage;
+            
+            showNotification(`Forecast generated for ${selectedCategory || 'all categories'}`, 'success');
         }
+
 
         // Search Functions
         function searchInventory() {
@@ -3092,6 +3108,18 @@
             
             showNotification(`Found ${filtered.length} sales records`, 'success');
         }
+
+        function updateForecastCategories() {
+            const select = document.getElementById('forecastCategory');
+            // Get unique categories from inventory
+            const categories = [...new Set(inventory.map(item => item.category))];
+            
+            select.innerHTML = '<option value="">All Categories</option>' +
+                categories.map(category => 
+                    `<option value="${category}">${category}</option>`
+                ).join('');
+        }
+
 
 
         // Initialize
