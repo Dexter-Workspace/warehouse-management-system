@@ -865,12 +865,37 @@
                         <div class="stat-value" id="pendingOrders">0</div>
                         <span class="stat-change positive">Processing</span>
                     </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Today's Sales</div>
+                        <div class="stat-value" id="todaysSalesDashboard">$0</div>
+                        <span class="stat-change positive">Today</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Monthly Revenue</div>
+                        <div class="stat-value" id="monthlyRevenue">$0</div>
+                        <span class="stat-change positive">This Month</span>
+                    </div>
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-placeholder">
-                        <h3>Inventory Trend Analysis</h3>
-                        <p>Connect to Firebase to see real-time data</p>
+                    <canvas id="dashboardChart"></canvas>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Top Selling Category</div>
+                        <div class="stat-value" id="topCategory">-</div>
+                        <span class="stat-change positive">This Month</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Average Order Value</div>
+                        <div class="stat-value" id="avgOrderValue">$0</div>
+                        <span class="stat-change positive">This Month</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Stock Turnover Rate</div>
+                        <div class="stat-value" id="turnoverRate">0%</div>
+                        <span class="stat-change positive">This Month</span>
                     </div>
                 </div>
 
@@ -897,6 +922,7 @@
                     </table>
                 </div>
             </section>
+
 
             <!-- Forecast Section -->
             <section id="forecast" class="content-section">
@@ -1719,7 +1745,6 @@
             if (!currentCompany) {
                 console.log('No company selected, cannot load dashboard data');
                 showNotification('Please select or create a company first', 'warning');
-                // Redirect to settings to create a company
                 if (companies.length === 0) {
                     showSection('settings', document.querySelector('.nav-link[onclick*="settings"]'));
                 }
@@ -1737,6 +1762,8 @@
                 ]);
                 
                 updateDashboardStats();
+                updateDashboardChart();
+                updateRecentActivities();
                 console.log('Dashboard data loaded successfully');
             } catch (error) {
                 console.error('Error loading dashboard data:', error);
@@ -1744,11 +1771,12 @@
             }
         }
 
+
         function updateDashboardStats() {
             // Calculate total inventory value
             const totalValue = inventory.reduce((sum, item) => 
                 sum + (item.quantity * item.unitPrice), 0);
-            document.getElementById('totalInventoryValue').textContent = `${totalValue.toFixed(2)}`;
+            document.getElementById('totalInventoryValue').textContent = `$${totalValue.toFixed(2)}`;
             
             // Total items
             const totalItems = inventory.reduce((sum, item) => sum + item.quantity, 0);
@@ -1761,7 +1789,47 @@
             // Pending orders
             const pending = orders.filter(order => order.status === 'Pending').length;
             document.getElementById('pendingOrders').textContent = pending;
+
+            // Today's sales
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todaySales = sales.filter(sale => {
+                const saleDate = new Date(sale.date?.seconds * 1000 || 0);
+                saleDate.setHours(0, 0, 0, 0);
+                return saleDate.getTime() === today.getTime();
+            }).reduce((sum, sale) => sum + sale.total, 0);
+            document.getElementById('todaysSalesDashboard').textContent = `$${todaySales.toFixed(2)}`;
+
+            // Monthly revenue
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            const monthlySales = sales.filter(sale => {
+                const saleDate = new Date(sale.date?.seconds * 1000 || 0);
+                return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
+            }).reduce((sum, sale) => sum + sale.total, 0);
+            document.getElementById('monthlyRevenue').textContent = `$${monthlySales.toFixed(2)}`;
+
+            // Top selling category
+            const categorySales = {};
+            sales.forEach(sale => {
+                const item = inventory.find(i => i.sku === sale.itemSKU);
+                if (item) {
+                    categorySales[item.category] = (categorySales[item.category] || 0) + sale.total;
+                }
+            });
+            const topCategory = Object.entries(categorySales).sort(([,a], [,b]) => b - a)[0];
+            document.getElementById('topCategory').textContent = topCategory ? topCategory[0] : '-';
+
+            // Average order value
+            const avgOrderValue = sales.length > 0 ? monthlySales / sales.length : 0;
+            document.getElementById('avgOrderValue').textContent = `$${avgOrderValue.toFixed(2)}`;
+
+            // Stock turnover rate
+            const avgInventoryValue = totalValue;
+            const turnoverRate = avgInventoryValue > 0 ? (monthlySales / avgInventoryValue) * 100 : 0;
+            document.getElementById('turnoverRate').textContent = `${turnoverRate.toFixed(1)}%`;
         }
+
 
         // Inventory Management
         async function loadInventory() {
@@ -3246,13 +3314,168 @@
             forecastChart.update();
         }
 
+        let dashboardChart = null;
+
+        function initializeDashboardChart() {
+            const ctx = document.getElementById('dashboardChart').getContext('2d');
+            dashboardChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Sales',
+                        data: [],
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.1,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Inventory Value',
+                        data: [],
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.1,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Sales vs Inventory Value Trend'
+                        },
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Sales ($)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Inventory Value ($)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateDashboardChart() {
+            if (!dashboardChart) {
+                initializeDashboardChart();
+            }
+
+            // Get last 30 days data
+            const labels = [];
+            const salesData = [];
+            const inventoryData = [];
+
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString());
+                
+                // Calculate sales for this day
+                const daySales = sales.filter(sale => {
+                    const saleDate = new Date(sale.date?.seconds * 1000);
+                    return saleDate.toDateString() === date.toDateString();
+                }).reduce((sum, sale) => sum + sale.total, 0);
+                salesData.push(daySales);
+
+                // Calculate inventory value for this day
+                const dayInventory = inventory.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+                inventoryData.push(dayInventory);
+            }
+
+            dashboardChart.data.labels = labels;
+            dashboardChart.data.datasets[0].data = salesData;
+            dashboardChart.data.datasets[1].data = inventoryData;
+            dashboardChart.update();
+        }
+
+        function updateRecentActivities() {
+            const tbody = document.getElementById('recentActivitiesTable');
+            const activities = [];
+
+            // Add recent sales
+            sales.slice(0, 5).forEach(sale => {
+                activities.push({
+                    date: new Date(sale.date?.seconds * 1000 || Date.now()),
+                    type: 'Sale',
+                    item: sale.itemName,
+                    quantity: sale.quantity,
+                    status: 'Completed'
+                });
+            });
+
+            // Add recent purchases
+            purchases.slice(0, 5).forEach(purchase => {
+                activities.push({
+                    date: new Date(purchase.date?.seconds * 1000 || Date.now()),
+                    type: 'Purchase',
+                    item: purchase.itemName,
+                    quantity: purchase.quantity,
+                    status: purchase.status
+                });
+            });
+
+            // Add recent orders
+            orders.slice(0, 5).forEach(order => {
+                activities.push({
+                    date: new Date(order.orderDate?.seconds * 1000 || Date.now()),
+                    type: 'Order',
+                    item: order.itemName,
+                    quantity: order.quantity,
+                    status: order.status
+                });
+            });
+
+            // Sort activities by date
+            activities.sort((a, b) => b.date - a.date);
+
+            // Update table
+            tbody.innerHTML = activities.slice(0, 10).map(activity => `
+                <tr>
+                    <td>${activity.date.toLocaleDateString()}</td>
+                    <td>${activity.type}</td>
+                    <td>${activity.item}</td>
+                    <td>${activity.quantity}</td>
+                    <td><span class="stat-change ${activity.status === 'Pending' ? 'negative' : 'positive'}">${activity.status}</span></td>
+                </tr>
+            `).join('');
+        }
+
+
+
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             // Attach login form handler
             document.getElementById('loginForm').addEventListener('submit', login);
             
-            // Initialize forecast chart
+            // Initialize charts
+            initializeDashboardChart();
             initializeForecastChart();
             
             // Set default dates
@@ -3268,6 +3491,7 @@
                 }
             });
         });
+
 
     </script>
 </body>
