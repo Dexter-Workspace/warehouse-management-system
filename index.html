@@ -915,6 +915,17 @@
                                 <option value="">All Categories</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Forecast Period</label>
+                            <select class="form-select" id="forecastDays">
+                                <option value="7">7 Days</option>
+                                <option value="10">10 Days</option>
+                                <option value="15">15 Days</option>
+                                <option value="30">30 Days</option>
+                                <option value="60">60 Days</option>
+                                <option value="90">90 Days</option>
+                            </select>
+                        </div>
                         <button class="btn btn-primary" onclick="generateForecast()">Generate Report</button>
                     </div>
                 </div>
@@ -2983,6 +2994,7 @@
             const selectedCategory = document.getElementById('forecastCategory').value;
             const startDate = document.getElementById('forecastStartDate').value;
             const endDate = document.getElementById('forecastEndDate').value;
+            const forecastDays = parseInt(document.getElementById('forecastDays').value);
             
             showNotification('Generating forecast report...', 'success');
             
@@ -2992,18 +3004,34 @@
                 filteredInventory = inventory.filter(item => item.category === selectedCategory);
             }
             
-            // Simple forecast calculation based on filtered inventory
+            // Calculate current stock levels
             const totalItems = filteredInventory.reduce((sum, item) => sum + item.quantity, 0);
-            const avgDemand = Math.floor(totalItems * 0.3) + Math.floor(Math.random() * 100);
-            const recommendedOrder = Math.floor(avgDemand * 0.7);
-            const coverage = Math.floor(Math.random() * 30) + 30;
             
-            document.getElementById('predictedDemand').textContent = avgDemand;
+            // Calculate average daily consumption based on selected period
+            const daysDiff = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
+            const avgDailyConsumption = daysDiff > 0 ? totalItems / daysDiff : 0;
+            
+            // Calculate forecast values based on selected period
+            const predictedDemand = Math.floor(avgDailyConsumption * forecastDays);
+            const recommendedOrder = Math.floor(predictedDemand * 0.7); // 70% of predicted demand
+            const currentStockCoverage = totalItems > 0 ? Math.floor(totalItems / avgDailyConsumption) : 0;
+            
+            // Update UI
+            document.getElementById('predictedDemand').textContent = predictedDemand;
             document.getElementById('recommendedOrder').textContent = recommendedOrder;
-            document.getElementById('stockCoverage').textContent = coverage;
+            document.getElementById('stockCoverage').textContent = `${currentStockCoverage} days`;
             
-            showNotification(`Forecast generated for ${selectedCategory || 'all categories'}`, 'success');
+            // Show detailed notification
+            const categoryText = selectedCategory || 'all categories';
+            showNotification(
+                `${forecastDays}-day forecast generated for ${categoryText}\n` +
+                `Predicted demand: ${predictedDemand} units\n` +
+                `Recommended order: ${recommendedOrder} units\n` +
+                `Current stock coverage: ${currentStockCoverage} days`,
+                'success'
+            );
         }
+
 
 
         // Search Functions
