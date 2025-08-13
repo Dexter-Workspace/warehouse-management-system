@@ -738,6 +738,7 @@
             color: var(--dark);
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <!-- Login Container -->
@@ -949,10 +950,7 @@
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-placeholder">
-                        <h3>Demand Forecast Chart</h3>
-                        <p>Predictive analytics visualization</p>
-                    </div>
+                    <canvas id="forecastChart"></canvas>
                 </div>
             </section>
 
@@ -3011,9 +3009,9 @@
             const daysDiff = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
             const avgDailyConsumption = daysDiff > 0 ? totalItems / daysDiff : 0;
             
-            // Calculate forecast values based on selected period
+            // Calculate forecast values
             const predictedDemand = Math.floor(avgDailyConsumption * forecastDays);
-            const recommendedOrder = Math.floor(predictedDemand * 0.7); // 70% of predicted demand
+            const recommendedOrder = Math.floor(predictedDemand * 0.7);
             const currentStockCoverage = totalItems > 0 ? Math.floor(totalItems / avgDailyConsumption) : 0;
             
             // Update UI
@@ -3021,16 +3019,23 @@
             document.getElementById('recommendedOrder').textContent = recommendedOrder;
             document.getElementById('stockCoverage').textContent = `${currentStockCoverage} days`;
             
+            // Update chart
+            updateForecastChart({
+                currentStock: totalItems,
+                dailyDemand: avgDailyConsumption,
+                recommendedOrder: recommendedOrder,
+                coverageDays: currentStockCoverage,
+                days: forecastDays
+            });
+            
             // Show detailed notification
             const categoryText = selectedCategory || 'all categories';
             showNotification(
-                `${forecastDays}-day forecast generated for ${categoryText}\n` +
-                `Predicted demand: ${predictedDemand} units\n` +
-                `Recommended order: ${recommendedOrder} units\n` +
-                `Current stock coverage: ${currentStockCoverage} days`,
+                `${forecastDays}-day forecast generated for ${categoryText}`,
                 'success'
             );
         }
+
 
 
 
@@ -3148,6 +3153,98 @@
                 ).join('');
         }
 
+        let forecastChart = null;
+
+        function initializeForecastChart() {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            forecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Current Stock',
+                        data: [],
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.1
+                    }, {
+                        label: 'Predicted Demand',
+                        data: [],
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.1
+                    }, {
+                        label: 'Recommended Stock',
+                        data: [],
+                        borderColor: 'rgb(54, 162, 235)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Inventory Forecast Analysis'
+                        },
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Quantity'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Days'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateForecastChart(data) {
+            if (!forecastChart) {
+                initializeForecastChart();
+            }
+
+            const labels = [];
+            const currentStockData = [];
+            const predictedDemandData = [];
+            const recommendedStockData = [];
+
+            // Generate labels for each day
+            for (let i = 0; i <= data.days; i++) {
+                labels.push(`Day ${i}`);
+            }
+
+            // Calculate daily values
+            const dailyConsumption = data.currentStock / data.coverageDays;
+            let currentStock = data.currentStock;
+
+            for (let i = 0; i <= data.days; i++) {
+                currentStockData.push(Math.max(0, currentStock));
+                predictedDemandData.push(data.dailyDemand * i);
+                recommendedStockData.push(data.recommendedOrder);
+                
+                currentStock -= dailyConsumption;
+            }
+
+            forecastChart.data.labels = labels;
+            forecastChart.data.datasets[0].data = currentStockData;
+            forecastChart.data.datasets[1].data = predictedDemandData;
+            forecastChart.data.datasets[2].data = recommendedStockData;
+            forecastChart.update();
+        }
 
 
         // Initialize
@@ -3155,18 +3252,23 @@
             // Attach login form handler
             document.getElementById('loginForm').addEventListener('submit', login);
             
+            // Initialize forecast chart
+            initializeForecastChart();
+            
             // Set default dates
             const today = new Date().toISOString().split('T')[0];
+            const lastMonth = new Date();
+            lastMonth.setMonth(lastMonth.getMonth() - 1);
+            
             document.querySelectorAll('input[type="date"]').forEach(input => {
                 if (input.id.includes('End') || input.id.includes('To')) {
                     input.value = today;
                 } else if (input.id.includes('Start') || input.id.includes('From')) {
-                    const lastMonth = new Date();
-                    lastMonth.setMonth(lastMonth.getMonth() - 1);
                     input.value = lastMonth.toISOString().split('T')[0];
                 }
             });
         });
+
     </script>
 </body>
 </html>
