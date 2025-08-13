@@ -2383,6 +2383,40 @@
             
             showNotification('Data exported successfully', 'success');
         }
+        
+        async function importCSV(type) {
+            const fileInput = document.getElementById(type + 'Import');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const csv = e.target.result;
+                const lines = csv.split('\n');
+                const headers = lines[0].split(',');
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const data = lines[i].split(',');
+                    if (data.length === headers.length) {
+                        const item = {};
+                        headers.forEach((header, index) => {
+                            item[header.trim()] = data[index].trim();
+                        });
+                        item.companyId = currentCompany;
+                        item.createdAt = window.firebase.serverTimestamp();
+                        
+                        await window.firebase.addDoc(
+                            window.firebase.collection(window.firebase.db, type),
+                            item
+                        );
+                    }
+                }
+                showNotification('Import completed', 'success');
+                location.reload();
+            };
+            reader.readAsText(file);
+        }
 
         // Forecast Functions
         function generateForecast() {
