@@ -3519,6 +3519,84 @@
             }
         }
 
+        async function editInventoryItem(itemId) {
+            const item = inventory.find(i => i.id === itemId);
+            if (!item) return;
+
+            const modalBody = `
+                <form onsubmit="handleEditInventory(event)">
+                    <input type="hidden" id="editItemId" value="${item.id}">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Item Name</label>
+                            <input type="text" class="form-input" id="editItemName" value="${item.name}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">SKU</label>
+                            <input type="text" class="form-input" id="editItemSKU" value="${item.sku}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <input type="text" class="form-input" id="editItemCategory" value="${item.category}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-input" id="editItemQuantity" value="${item.quantity}" required min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Unit Price</label>
+                            <input type="number" class="form-input" id="editItemPrice" value="${item.unitPrice}" required step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-input" id="editItemLocation" value="${item.location || ''}" placeholder="Warehouse location">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Low Stock Threshold</label>
+                            <input type="number" class="form-input" id="editItemLowStockThreshold" value="${item.lowStockThreshold || 10}" min="0">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Update Item</button>
+                    </div>
+                </form>
+            `;
+            showModal('Edit Inventory Item', modalBody);
+        }
+
+        async function handleEditInventory(e) {
+            e.preventDefault();
+            
+            const itemId = document.getElementById('editItemId').value;
+            const updateData = {
+                name: document.getElementById('editItemName').value,
+                sku: document.getElementById('editItemSKU').value,
+                category: document.getElementById('editItemCategory').value,
+                quantity: parseInt(document.getElementById('editItemQuantity').value),
+                unitPrice: parseFloat(document.getElementById('editItemPrice').value),
+                location: document.getElementById('editItemLocation').value,
+                lowStockThreshold: parseInt(document.getElementById('editItemLowStockThreshold').value) || 10,
+                updatedAt: window.firebase.serverTimestamp()
+            };
+
+            showLoading(true);
+            try {
+                await window.firebase.updateDoc(
+                    window.firebase.doc(window.firebase.db, 'inventory', itemId),
+                    updateData
+                );
+                closeModal();
+                await loadInventory();
+                showNotification('Item updated successfully', 'success');
+            } catch (error) {
+                showNotification('Error updating item: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
