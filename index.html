@@ -2983,7 +2983,8 @@
                     const headers = lines[0].split(',').map(h => h.trim());
                     let successCount = 0;
                     let errorCount = 0;
-                    
+                    const newRecords = []; // <<< NEW: Array to hold records in memory
+
                     // Process based on type
                     for (let i = 1; i < lines.length; i++) {
                         const data = parseCSVLine(lines[i]);
@@ -3012,16 +3013,13 @@
                         try {
                             // Add type-specific fields
                             switch(type) {
-                                
                                 case 'inventory':
                                     if (!item.sku || !item.name) {
                                         errorCount++;
                                         continue;
                                     }
-                                    // Check if item exists
                                     const existingItem = inventory.find(inv => inv.sku === item.sku);
                                     if (existingItem) {
-                                        // Update existing item - no new document creation
                                         await window.firebase.updateDoc(
                                             window.firebase.doc(window.firebase.db, 'inventory', existingItem.id),
                                             {
@@ -3030,83 +3028,70 @@
                                                 updatedAt: window.firebase.serverTimestamp()
                                             }
                                         );
-                                        successCount++; // Count this as a success
-                                        continue; // Skip the addDoc part
+                                        successCount++;
+                                        continue;
                                     }
-                                    // Only add new item if it doesn't exist
-                                    await window.firebase.addDoc(
-                                        window.firebase.collection(window.firebase.db, 'inventory'),
-                                        item
-                                    );
-                                    successCount++;
+                                    newRecords.push(item); // <<< MODIFIED: Push to array
                                     break;
 
-                                // ... inside the importCSV function, within the switch(type) statement ...
+                                case 'sales':
+                                    if (!item.invoiceNo || !item.customerName || !item.itemSKU) {
+                                        errorCount++;
+                                        continue;
+                                    }
+                                    const unitPrice = parseFloat(item.unitPrice) || 0;
+                                    const quantity = parseInt(item.quantity) || 0;
+                                    const total = parseFloat(item.total) || (unitPrice * quantity);
 
-                            case 'sales':
-                                // The 'item' object is created from the CSV row data.
-                                // We need to map it to our clean schema.
-                                
-                                // Ensure required fields exist
-                                if (!item.invoiceNo || !item.customerName || !item.itemSKU) {
-                                    errorCount++;
-                                    continue; // Skip this row
-                                }
-
-                                // CRITICAL: Convert string values from CSV to Number types
-                                const unitPrice = parseFloat(item.unitPrice) || 0;
-                                const quantity = parseInt(item.quantity) || 0;
-                                const total = parseFloat(item.total) || (unitPrice * quantity); // Calculate if not provided
-
-                                // Create the clean sales object
-                                const salesRecord = {
-                                    invoiceNo: item.invoiceNo,
-                                    invoiceDate: item.invoiceDate || new Date().toISOString().split('T')[0], // Use provided date or today
-                                    customerName: item.customerName,
-                                    itemSKU: item.itemSKU,
-                                    itemName: item.itemName || 'N/A',
-                                    unitPrice: unitPrice,
-                                    quantity: quantity,
-                                    total: total,
-                                    companyId: currentCompany,
-                                    createdAt: window.firebase.serverTimestamp(),
-                                    updatedAt: window.firebase.serverTimestamp()
-                                };
-
-                                // Save the clean object to Firestore
-                                await window.firebase.addDoc(
-                                    window.firebase.collection(window.firebase.db, 'sales'),
-                                    salesRecord
-                                );
-                                successCount++;
-                                break;
-
+                                    const salesRecord = {
+                                        invoiceNo: item.invoiceNo,
+                                        invoiceDate: item.invoiceDate || new Date().toISOString().split('T')[0],
+                                        customerName: item.customerName,
+                                        itemSKU: item.itemSKU,
+                                        itemName: item.itemName || 'N/A',
+                                        unitPrice: unitPrice,
+                                        quantity: quantity,
+                                        total: total,
+                                        companyId: currentCompany,
+                                        createdAt: window.firebase.serverTimestamp(),
+                                        updatedAt: window.firebase.serverTimestamp()
+                                    };
+                                    newRecords.push(salesRecord); // <<< MODIFIED: Push to array
+                                    break;
                                     
                                 case 'orders':
                                     item.orderId = item.orderId || `ORD-${Date.now()}-${i}`;
                                     item.status = item.status || 'Pending';
                                     item.orderDate = window.firebase.serverTimestamp();
+                                    newRecords.push(item); // <<< MODIFIED: Push to array
                                     break;
                                     
                                 case 'purchase':
                                     item.poNumber = item.poNumber || `PO-${Date.now()}-${i}`;
                                     item.status = item.status || 'Received';
                                     item.date = window.firebase.serverTimestamp();
+                                    newRecords.push(item); // <<< MODIFIED: Push to array
                                     break;
                             }
                             
-                            await window.firebase.addDoc(
-                                window.firebase.collection(window.firebase.db, type),
-                                item
-                            );
-                            successCount++;
+                            // OLD CODE REMOVED: await window.firebase.addDoc(...) was here
+                            successCount++; // Count each processed item as a success
                         } catch (error) {
-                            console.error('Error importing row:', error);
+                            console.error('Error processing row:', error);
                             errorCount++;
                         }
                     }
-                    
-                    // Reload the relevant data
+
+                    // <<< NEW: After the loop, write all records at once
+                    if (newRecords.length > 0) {
+                        const batchWrites = newRecords.map(record => 
+                            window.firebase.addDoc(window.firebase.collection(window.firebase.db, type), record)
+                        );
+                        await Promise.all(batchWrites);
+                        console.log(`Successfully added ${newRecords.length} new records to Firestore.`);
+                    }
+
+                    // <<< NEW: Reload data ONCE after all imports are complete
                     switch(type) {
                         case 'inventory':
                             await loadInventory();
@@ -3126,10 +3111,11 @@
                     fileInput.value = '';
                     
                     // Show results
+                    const totalProcessed = successCount + errorCount;
                     if (errorCount > 0) {
-                        showNotification(`Import completed: ${successCount} successful, ${errorCount} failed`, 'warning');
+                        showNotification(`Import completed: ${successCount} successful, ${errorCount} failed out of ${totalProcessed} total.`, 'warning');
                     } else {
-                        showNotification(`Successfully imported ${successCount} items`, 'success');
+                        showNotification(`Successfully imported ${successCount} items.`, 'success');
                     }
                     
                 } catch (error) {
@@ -3147,6 +3133,7 @@
             
             reader.readAsText(file);
         }
+
         
         // Helper function to parse CSV line handling commas in quotes
         function parseCSVLine(line) {
