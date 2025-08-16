@@ -2970,7 +2970,7 @@
                                     // Check if item exists
                                     const existingItem = inventory.find(inv => inv.sku === item.sku);
                                     if (existingItem) {
-                                        // Update existing item
+                                        // Update existing item - no new document creation
                                         await window.firebase.updateDoc(
                                             window.firebase.doc(window.firebase.db, 'inventory', existingItem.id),
                                             {
@@ -2979,13 +2979,15 @@
                                                 updatedAt: window.firebase.serverTimestamp()
                                             }
                                         );
-                                    } else {
-                                        // Add new item
-                                        await window.firebase.addDoc(
-                                            window.firebase.collection(window.firebase.db, 'inventory'),
-                                            item
-                                        );
+                                        successCount++; // Count this as a success
+                                        continue; // Skip the addDoc part
                                     }
+                                    // Only add new item if it doesn't exist
+                                    await window.firebase.addDoc(
+                                        window.firebase.collection(window.firebase.db, 'inventory'),
+                                        item
+                                    );
+                                    successCount++;
                                     break;
 
                                 case 'sales':
