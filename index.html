@@ -936,6 +936,19 @@
                             <label class="form-label">End Date</label>
                             <input type="date" class="form-input" id="forecastEndDate">
                         </div>
+                        <div class="filter-grid">
+                            <div class="form-group">
+                                <label class="form-label">Search Item</label>
+                                <input type="text" class="form-input" placeholder="Enter item name or SKU" id="forecastSearch">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Category</label>
+                                <select class="form-select" id="forecastCategory">
+                                    <option value="">All Categories</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary" onclick="searchForecast()">🔍 Search</button>
+                        </div>
                         <div class="form-group">
                             <label class="form-label">Category</label>
                             <select class="form-select" id="forecastCategory">
@@ -959,8 +972,8 @@
 
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-label">Predicted Demand</div>
-                        <div class="stat-value" id="predictedDemand">0</div>
+                        <div class="stat-label">Predicted Forecast Amount</div>
+                        <div class="stat-value" id="predictedDemand">$0</div>
                         <span class="stat-change positive">Units next month</span>
                     </div>
                     <div class="stat-card">
@@ -978,6 +991,31 @@
                 <div class="chart-container">
                     <canvas id="forecastChart"></canvas>
                 </div>
+
+                <div class="table-container" style="margin-top: 2rem;">
+                    <h3 style="margin-bottom: 1.5rem;">Suggested Orders</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Item Name</th>
+                                <th>Category</th>
+                                <th>Current Stock</th>
+                                <th>Forecast Demand</th>
+                                <th>Suggested Order</th>
+                                <th>Order Priority</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suggestedOrdersTable">
+                            <tr>
+                                <td colspan="6" class="empty-state">
+                                    <div class="empty-state-icon">📋</div>
+                                    <p>Generate forecast to see suggested orders</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
             </section>
 
             <!-- Inventory Section -->
@@ -3107,14 +3145,17 @@
             const avgDailyConsumption = daysDiff > 0 ? totalItems / daysDiff : 0;
             
             // Calculate forecast values
-            const predictedDemand = Math.floor(avgDailyConsumption * forecastDays);
-            const recommendedOrder = Math.floor(predictedDemand * 0.7);
+            const predictedForecastAmount = Math.floor(avgDailyConsumption * forecastDays);
+            const recommendedOrder = Math.floor(predictedForecastAmount * 0.7);
             const currentStockCoverage = totalItems > 0 ? Math.floor(totalItems / avgDailyConsumption) : 0;
             
             // Update UI
-            document.getElementById('predictedDemand').textContent = predictedDemand;
+            document.getElementById('predictedDemand').textContent = `$${predictedForecastAmount.toFixed(2)}`;
             document.getElementById('recommendedOrder').textContent = recommendedOrder;
             document.getElementById('stockCoverage').textContent = `${currentStockCoverage} days`;
+            
+            // Update suggested orders table
+            updateSuggestedOrdersTable(filteredInventory);
             
             // Update chart
             updateForecastChart({
@@ -3132,8 +3173,6 @@
                 'success'
             );
         }
-
-
 
 
         // Search Functions
@@ -3595,6 +3634,69 @@
                 showLoading(false);
             }
         }
+
+        function searchForecast() {
+            const searchTerm = document.getElementById('forecastSearch').value.toLowerCase();
+            const category = document.getElementById('forecastCategory').value;
+            
+            let filtered = inventory;
+            
+            if (searchTerm) {
+                filtered = filtered.filter(item => 
+                    item.name.toLowerCase().includes(searchTerm) || 
+                    item.sku.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            if (category !== 'All Categories') {
+                filtered = filtered.filter(item => item.category === category);
+            }
+            
+            // Update suggested orders table with filtered results
+            updateSuggestedOrdersTable(filtered);
+            
+            showNotification(`Found ${filtered.length} items for forecast`, 'success');
+        }
+
+        function updateSuggestedOrdersTable(items) {
+            const tbody = document.getElementById('suggestedOrdersTable');
+            
+            if (items.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state">No items found matching your search</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            const suggestedOrders = items.map(item => {
+                const forecastDays = parseInt(document.getElementById('forecastDays').value);
+                const suggestedOrder = Math.ceil(item.quantity * 0.7); // 70% of current stock
+                
+                return {
+                    name: item.name,
+                    category: item.category,
+                    currentStock: item.quantity,
+                    forecastDemand: suggestedOrder,
+                    suggestedOrder: suggestedOrder,
+                    priority: item.quantity < (item.lowStockThreshold || 10) ? 'High' : 'Medium'
+                };
+            });
+            
+            tbody.innerHTML = suggestedOrders.map(order => `
+                <tr>
+                    <td>${order.name}</td>
+                    <td>${order.category}</td>
+                    <td>${order.currentStock}</td>
+                    <td>${order.forecastDemand}</td>
+                    <td>${order.suggestedOrder}</td>
+                    <td><span class="stat-change ${order.priority === 'High' ? 'negative' : 'positive'}">${order.priority}</span></td>
+                </tr>
+            `).join('');
+        }
+
+
 
 
 
