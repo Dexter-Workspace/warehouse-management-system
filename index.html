@@ -2025,7 +2025,6 @@
         }
 
         // Sales Management
-        // In your main <script> tag
         async function loadSales() {
             if (!currentCompany) return;
             
@@ -2053,64 +2052,49 @@
 
 
         // In your main <script> tag
-            function updateSalesTable() {
-                const tbody = document.getElementById('salesTable');
-                
-                if (sales.length === 0) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="9" class="empty-state">
-                                <div class="empty-state-icon">💰</div>
-                                <p>No sales transactions found</p>
-                            </td>
-                        </tr>
-                    `;
-                    return;
-                }
-                
-                tbody.innerHTML = sales.map(sale => {
-                    // Use the new field name, OR (||) the old field name as a fallback
-                    const invoiceDate = sale.invoiceDate || (sale.date ? new Date(sale.date.seconds * 1000).toLocaleDateString() : 'N/A');
-                    const invoiceNo = sale.invoiceNo || sale.transactionId || 'N/A';
-                    const itemSKU = sale.itemSKU || sale.sku || 'N/A';
-                    const customerName = sale.customerName || sale.customer || 'N/A';
-                    const itemName = sale.itemName || 'N/A';
-                    const unitPrice = sale.unitPrice || sale.price || 0;
-                    const quantity = sale.quantity || 0;
-                    const total = sale.total || sale.amount || 0;
-                    const createdAt = sale.createdAt ? new Date(sale.createdAt.seconds * 1000).toLocaleString() : (sale.date ? new Date(sale.date.seconds * 1000).toLocaleString() : 'N/A');
-
-                    return `
-                        <tr>
-                            <td>${invoiceDate}</td>
-                            <td>${invoiceNo}</td>
-                            <td>${itemSKU}</td>
-                            <td>${customerName}</td>
-                            <td>${itemName}</td>
-                            <td>$${unitPrice.toFixed(2)}</td>
-                            <td>${quantity}</td>
-                            <td>$${total.toFixed(2)}</td>
-                            <td>${createdAt}</td>
-                        </tr>
-                    `;
-                }).join('');
-            }
-
+        function updateSalesTable() {
+            const tbody = document.getElementById('salesTable');
             
-            tbody.innerHTML = sales.map(sale => `
-                <tr>
-                    <td>${sale.invoiceDate || 'N/A'}</td>
-                    <td>${sale.invoiceNo || 'N/A'}</td>
-                    <td>${sale.itemSKU || 'N/A'}</td>
-                    <td>${sale.customerName || 'N/A'}</td>
-                    <td>${sale.itemName || 'N/A'}</td>
-                    <td>$${(sale.unitPrice || 0).toFixed(2)}</td>
-                    <td>${sale.quantity || 0}</td>
-                    <td>$${(sale.total || 0).toFixed(2)}</td>
-                    <td>${sale.createdAt ? new Date(sale.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</td>
-                </tr>
-            `).join('');
+            if (sales.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <div class="empty-state-icon">💰</div>
+                            <p>No sales transactions found</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = sales.map(sale => {
+                // Use the new field name, OR (||) the old field name as a fallback
+                const invoiceDate = sale.invoiceDate || (sale.date ? new Date(sale.date.seconds * 1000).toLocaleDateString() : 'N/A');
+                const invoiceNo = sale.invoiceNo || sale.transactionId || 'N/A';
+                const itemSKU = sale.itemSKU || sale.sku || 'N/A';
+                const customerName = sale.customerName || sale.customer || 'N/A';
+                const itemName = sale.itemName || 'N/A';
+                const unitPrice = sale.unitPrice || sale.price || 0;
+                const quantity = sale.quantity || 0;
+                const total = sale.total || sale.amount || 0;
+                const createdAt = sale.createdAt ? new Date(sale.createdAt.seconds * 1000).toLocaleString() : (sale.date ? new Date(sale.date.seconds * 1000).toLocaleString() : 'N/A');
+
+                return `
+                    <tr>
+                        <td>${invoiceDate}</td>
+                        <td>${invoiceNo}</td>
+                        <td>${itemSKU}</td>
+                        <td>${customerName}</td>
+                        <td>${itemName}</td>
+                        <td>$${unitPrice.toFixed(2)}</td>
+                        <td>${quantity}</td>
+                        <td>$${total.toFixed(2)}</td>
+                        <td>${createdAt}</td>
+                    </tr>
+                `;
+            }).join('');
         }
+
 
 
         function updateSalesStats() {
