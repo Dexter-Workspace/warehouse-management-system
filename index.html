@@ -3117,6 +3117,7 @@
 
         // Forecast Functions
         function generateForecast() {
+            const searchTerm = document.getElementById('forecastSearch').value.toLowerCase();
             const selectedCategory = document.getElementById('forecastCategory').value;
             const startDate = document.getElementById('forecastStartDate').value;
             const endDate = document.getElementById('forecastEndDate').value;
@@ -3124,10 +3125,17 @@
             
             showNotification('Generating forecast report...', 'success');
             
-            // Filter inventory by selected category
+            // Filter inventory by search term and category
             let filteredInventory = inventory;
+            if (searchTerm) {
+                filteredInventory = filteredInventory.filter(item => 
+                    item.name.toLowerCase().includes(searchTerm) || 
+                    item.sku.toLowerCase().includes(searchTerm)
+                );
+            }
+            
             if (selectedCategory) {
-                filteredInventory = inventory.filter(item => item.category === selectedCategory);
+                filteredInventory = filteredInventory.filter(item => item.category === selectedCategory);
             }
             
             // Calculate current stock levels
@@ -3161,11 +3169,13 @@
             
             // Show detailed notification
             const categoryText = selectedCategory || 'all categories';
+            const searchInfo = searchTerm ? ` for "${searchTerm}"` : '';
             showNotification(
-                `${forecastDays}-day forecast generated for ${categoryText}`,
+                `${forecastDays}-day forecast generated${searchInfo} for ${categoryText}`,
                 'success'
             );
         }
+
 
 
         // Search Functions
