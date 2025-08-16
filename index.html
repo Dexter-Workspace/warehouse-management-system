@@ -2025,6 +2025,7 @@
         }
 
         // Sales Management
+        // In your main <script> tag
         async function loadSales() {
             if (!currentCompany) return;
             
@@ -2032,7 +2033,7 @@
                 const q = window.firebase.query(
                     window.firebase.collection(window.firebase.db, 'sales'),
                     window.firebase.where('companyId', '==', currentCompany),
-                    window.firebase.orderBy('date', 'desc'),
+                    window.firebase.orderBy('createdAt', 'desc'), // Changed from 'date' to 'createdAt'
                     window.firebase.limit(50)
                 );
                 
@@ -2050,20 +2051,51 @@
             }
         }
 
-        function updateSalesTable() {
-            const tbody = document.getElementById('salesTable');
-            
-            if (sales.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="9" class="empty-state">
-                            <div class="empty-state-icon">💰</div>
-                            <p>No sales transactions found</p>
-                        </td>
-                    </tr>
-                `;
-                return;
+
+        // In your main <script> tag
+            function updateSalesTable() {
+                const tbody = document.getElementById('salesTable');
+                
+                if (sales.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="9" class="empty-state">
+                                <div class="empty-state-icon">💰</div>
+                                <p>No sales transactions found</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                tbody.innerHTML = sales.map(sale => {
+                    // Use the new field name, OR (||) the old field name as a fallback
+                    const invoiceDate = sale.invoiceDate || (sale.date ? new Date(sale.date.seconds * 1000).toLocaleDateString() : 'N/A');
+                    const invoiceNo = sale.invoiceNo || sale.transactionId || 'N/A';
+                    const itemSKU = sale.itemSKU || sale.sku || 'N/A';
+                    const customerName = sale.customerName || sale.customer || 'N/A';
+                    const itemName = sale.itemName || 'N/A';
+                    const unitPrice = sale.unitPrice || sale.price || 0;
+                    const quantity = sale.quantity || 0;
+                    const total = sale.total || sale.amount || 0;
+                    const createdAt = sale.createdAt ? new Date(sale.createdAt.seconds * 1000).toLocaleString() : (sale.date ? new Date(sale.date.seconds * 1000).toLocaleString() : 'N/A');
+
+                    return `
+                        <tr>
+                            <td>${invoiceDate}</td>
+                            <td>${invoiceNo}</td>
+                            <td>${itemSKU}</td>
+                            <td>${customerName}</td>
+                            <td>${itemName}</td>
+                            <td>$${unitPrice.toFixed(2)}</td>
+                            <td>${quantity}</td>
+                            <td>$${total.toFixed(2)}</td>
+                            <td>${createdAt}</td>
+                        </tr>
+                    `;
+                }).join('');
             }
+
             
             tbody.innerHTML = sales.map(sale => `
                 <tr>
@@ -3025,43 +3057,43 @@
 
                                 // ... inside the importCSV function, within the switch(type) statement ...
 
-                                case 'sales':
-                                    // The 'item' object is created from the CSV row data.
-                                    // We need to map it to our clean schema.
-                                    
-                                    // Ensure required fields exist
-                                    if (!item.invoiceNo || !item.customerName || !item.itemSKU) {
-                                        errorCount++;
-                                        continue; // Skip this row
-                                    }
+                            case 'sales':
+                                // The 'item' object is created from the CSV row data.
+                                // We need to map it to our clean schema.
+                                
+                                // Ensure required fields exist
+                                if (!item.invoiceNo || !item.customerName || !item.itemSKU) {
+                                    errorCount++;
+                                    continue; // Skip this row
+                                }
 
-                                    // CRITICAL: Convert string values from CSV to Number types
-                                    const unitPrice = parseFloat(item.unitPrice) || 0;
-                                    const quantity = parseInt(item.quantity) || 0;
-                                    const total = parseFloat(item.total) || (unitPrice * quantity); // Calculate if not provided
+                                // CRITICAL: Convert string values from CSV to Number types
+                                const unitPrice = parseFloat(item.unitPrice) || 0;
+                                const quantity = parseInt(item.quantity) || 0;
+                                const total = parseFloat(item.total) || (unitPrice * quantity); // Calculate if not provided
 
-                                    // Create the clean sales object
-                                    const salesRecord = {
-                                        invoiceNo: item.invoiceNo,
-                                        invoiceDate: item.invoiceDate || new Date().toISOString().split('T')[0], // Use provided date or today
-                                        customerName: item.customerName,
-                                        itemSKU: item.itemSKU,
-                                        itemName: item.itemName || 'N/A',
-                                        unitPrice: unitPrice,
-                                        quantity: quantity,
-                                        total: total,
-                                        companyId: currentCompany,
-                                        createdAt: window.firebase.serverTimestamp(),
-                                        updatedAt: window.firebase.serverTimestamp()
-                                    };
+                                // Create the clean sales object
+                                const salesRecord = {
+                                    invoiceNo: item.invoiceNo,
+                                    invoiceDate: item.invoiceDate || new Date().toISOString().split('T')[0], // Use provided date or today
+                                    customerName: item.customerName,
+                                    itemSKU: item.itemSKU,
+                                    itemName: item.itemName || 'N/A',
+                                    unitPrice: unitPrice,
+                                    quantity: quantity,
+                                    total: total,
+                                    companyId: currentCompany,
+                                    createdAt: window.firebase.serverTimestamp(),
+                                    updatedAt: window.firebase.serverTimestamp()
+                                };
 
-                                    // Save the clean object to Firestore
-                                    await window.firebase.addDoc(
-                                        window.firebase.collection(window.firebase.db, 'sales'),
-                                        salesRecord
-                                    );
-                                    successCount++;
-                                    break;
+                                // Save the clean object to Firestore
+                                await window.firebase.addDoc(
+                                    window.firebase.collection(window.firebase.db, 'sales'),
+                                    salesRecord
+                                );
+                                successCount++;
+                                break;
 
                                     
                                 case 'orders':
