@@ -2064,15 +2064,15 @@
             
             tbody.innerHTML = sales.map(sale => `
                 <tr>
-                    <td>${sale.transactionId}</td>
-                    <td>${new Date(sale.date?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
-                    <td>${sale.customer}</td>
-                    <td>${sale.itemSKU}</td>
-                    <td>${sale.itemName}</td>
-                    <td>${sale.quantity}</td>
-                    <td>$${sale.unitPrice.toFixed(2)}</td>
-                    <td>$${sale.total.toFixed(2)}</td>
-                    <td><span class="stat-change positive">Completed</span></td>
+                    <td>${sale.invoiceDate || 'N/A'}</td>
+                    <td>${sale.invoiceNo || 'N/A'}</td>
+                    <td>${sale.itemSKU || 'N/A'}</td>
+                    <td>${sale.customerName || 'N/A'}</td>
+                    <td>${sale.itemName || 'N/A'}</td>
+                    <td>$${(sale.unitPrice || 0).toFixed(2)}</td>
+                    <td>${sale.quantity || 0}</td>
+                    <td>$${(sale.total || 0).toFixed(2)}</td>
+                    <td>${sale.createdAt ? new Date(sale.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</td>
                 </tr>
             `).join('');
         }
@@ -2182,24 +2182,24 @@
             const invoiceDate = document.getElementById('saleInvoiceDate').value;
             
             const saleData = {
-                invoiceDate: invoiceDate,
+                // Use the standardized field names
                 invoiceNo: document.getElementById('saleInvoiceNo').value,
+                invoiceDate: invoiceDate, // String from the date input
                 customerName: document.getElementById('saleCustomer').value,
-                sku: select.value,
-                itemName: document.getElementById('saleItemName').value,
-                quantity: quantity,
-                price: price,
-                amount: amount,
-                companyId: currentCompany,
-                createdAt: window.firebase.serverTimestamp(),
-                
-                // Legacy fields for compatibility
-                transactionId: document.getElementById('saleInvoiceNo').value,
                 itemSKU: select.value,
-                customer: document.getElementById('saleCustomer').value,
-                unitPrice: price,
-                total: amount,
-                date: window.firebase.serverTimestamp()
+                itemName: document.getElementById('saleItemName').value,
+                
+                // CRITICAL: Ensure numbers are saved as Number type
+                unitPrice: price, 
+                quantity: quantity,
+                total: amount, // Calculated from numbers
+                
+                // BEST PRACTICE: Use serverTimestamp for accuracy
+                createdAt: window.firebase.serverTimestamp(),
+                updatedAt: window.firebase.serverTimestamp(), // Good practice to add an update timestamp
+                
+                // Required for company-specific data
+                companyId: currentCompany 
             };
             
             showLoading(true);
@@ -3021,12 +3021,40 @@
                                     break;
 
                                 case 'sales':
-                                    item.transactionId = item.transactionId || `TXN-${Date.now()}-${i}`;
-                                    if (item.invoiceDate) {
-                                        setInvoiceDateForImport(item.invoiceDate);
+
+                                    if (!item.invoiceNo || !item.customerName || !item.itemSKU) {
+                                        errorCount++;
+                                        continue; // Skip this row
                                     }
-                                    item.date = window.firebase.serverTimestamp();
+
+                                    // CRITICAL: Convert string values from CSV to Number types
+                                    const unitPrice = parseFloat(item.unitPrice) || 0;
+                                    const quantity = parseInt(item.quantity) || 0;
+                                    const total = parseFloat(item.total) || (unitPrice * quantity); // Calculate if not provided
+
+                                    // Create the clean sales object
+                                    const salesRecord = {
+                                        invoiceNo: item.invoiceNo,
+                                        invoiceDate: item.invoiceDate || new Date().toISOString().split('T')[0], // Use provided date or today
+                                        customerName: item.customerName,
+                                        itemSKU: item.itemSKU,
+                                        itemName: item.itemName || 'N/A',
+                                        unitPrice: unitPrice,
+                                        quantity: quantity,
+                                        total: total,
+                                        companyId: currentCompany,
+                                        createdAt: window.firebase.serverTimestamp(),
+                                        updatedAt: window.firebase.serverTimestamp()
+                                    };
+
+                                    // Save the clean object to Firestore
+                                    await window.firebase.addDoc(
+                                        window.firebase.collection(window.firebase.db, 'sales'),
+                                        salesRecord
+                                    );
+                                    successCount++;
                                     break;
+
                                     
                                 case 'orders':
                                     item.orderId = item.orderId || `ORD-${Date.now()}-${i}`;
