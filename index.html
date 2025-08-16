@@ -2109,7 +2109,7 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label class="form-label">Invoice Date</label>
-                            <input type="date" class="form-input" id="saleInvoiceDate" required value="${new Date().toISOString().split('T')[0]}">
+                            <input type="date" class="form-input" id="saleInvoiceDate" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Invoice No.</label>
@@ -2182,9 +2182,10 @@
             const quantity = parseInt(document.getElementById('saleQuantity').value);
             const price = parseFloat(document.getElementById('salePrice').value);
             const amount = parseFloat(document.getElementById('saleAmount').value);
+            const invoiceDate = document.getElementById('saleInvoiceDate').value;
             
             const saleData = {
-                invoiceDate: document.getElementById('saleInvoiceDate').value,
+                invoiceDate: invoiceDate,
                 invoiceNo: document.getElementById('saleInvoiceNo').value,
                 customerName: document.getElementById('saleCustomer').value,
                 sku: select.value,
@@ -2231,6 +2232,7 @@
                 showLoading(false);
             }
         }
+
 
         // Orders Management
         async function loadOrders() {
@@ -3023,6 +3025,9 @@
 
                                 case 'sales':
                                     item.transactionId = item.transactionId || `TXN-${Date.now()}-${i}`;
+                                    if (item.invoiceDate) {
+                                        setInvoiceDateForImport(item.invoiceDate);
+                                    }
                                     item.date = window.firebase.serverTimestamp();
                                     break;
                                     
@@ -3697,6 +3702,13 @@
                     <td><span class="stat-change ${order.priority === 'High' ? 'negative' : 'positive'}">${order.priority}</span></td>
                 </tr>
             `).join('');
+        }
+        
+        function setInvoiceDateForImport(date) {
+            const dateInput = document.getElementById('saleInvoiceDate');
+            if (dateInput) {
+                dateInput.value = date;
+            }
         }
 
 
