@@ -1092,10 +1092,13 @@
 
             <!-- Sales Section -->
             <section id="sales" class="content-section">
-                <div class="actions">
-                    <button id="export-csv-btn">Export to CSV</button>
-                    <button id="import-csv-btn">Import from CSV</button>
-                    <input type="file" id="csv-file-input" accept=".csv" style="display: none;" />
+                <div class="action-buttons">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="salesImport" accept=".csv" onchange="importCSV('sales')">
+                        <label for="salesImport" class="file-input-label">📥 Import CSV</label>
+                    </div>
+                    <button class="btn btn-secondary" onclick="exportCSV('sales')">📤 Export CSV</button>
+                    <button class="btn btn-success" onclick="showAddSaleModal()">+ Record Sale</button>
                 </div>
 
                   <div class="filter-section">
@@ -1141,7 +1144,7 @@
 
                 <div class="table-container">
                     <h3 style="margin-bottom: 1.5rem;">Recent Sales Transactions</h3>
-                    <table class="sales-table">
+                    <table>
                         <thead>
                             <tr>
                                 <th>Invoice Date</th>
@@ -1155,7 +1158,7 @@
                                 <th>Created At</th>
                             </tr>
                         </thead>
-                        <tbody id="sales-table-body">
+                        <tbody id="salesTable">
                             <tr>
                                 <td colspan="9" class="empty-state">
                                     <div class="empty-state-icon">💰</div>
@@ -3020,8 +3023,13 @@
                                     successCount++;
                                     break;
 
-                                case 'sales':
+                                // ... inside the importCSV function, within the switch(type) statement ...
 
+                                case 'sales':
+                                    // The 'item' object is created from the CSV row data.
+                                    // We need to map it to our clean schema.
+                                    
+                                    // Ensure required fields exist
                                     if (!item.invoiceNo || !item.customerName || !item.itemSKU) {
                                         errorCount++;
                                         continue; // Skip this row
