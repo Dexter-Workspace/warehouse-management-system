@@ -1810,7 +1810,7 @@
     // Calculate total inventory value
             const totalValue = inventory.reduce((sum, item) => 
                 sum + (item.quantity * item.unitPrice), 0);
-            document.getElementById('totalInventoryValue').textContent = `$${totalValue.toFixed(2)}`;
+            document.getElementById('totalInventoryValue').textContent = `₱${totalValue.toFixed(2)}`;
             
             // Total items
             const totalItems = inventory.reduce((sum, item) => sum + item.quantity, 0);
@@ -1855,7 +1855,7 @@
                 return saleDate.getTime() === today.getTime();
             }).reduce((sum, sale) => sum + (sale.total || sale.amount || 0), 0);
             
-            document.getElementById('todaysSalesDashboard').textContent = `$${todaySales.toFixed(2)}`;
+            document.getElementById('todaysSalesDashboard').textContent = `₱${todaySales.toFixed(2)}`;
 
             // Calculate Monthly Revenue
             const monthlySales = sales.filter(sale => {
@@ -1879,7 +1879,7 @@
                 return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
             }).reduce((sum, sale) => sum + (sale.total || sale.amount || 0), 0);
             
-            document.getElementById('monthlyRevenue').textContent = `$${monthlySales.toFixed(2)}`;
+            document.getElementById('monthlyRevenue').textContent = `₱${monthlySales.toFixed(2)}`;
 
             // Top selling category
             const categorySales = {};
@@ -1894,7 +1894,7 @@
 
             // Average order value
             const avgOrderValue = sales.length > 0 ? monthlySales / sales.length : 0;
-            document.getElementById('avgOrderValue').textContent = `$${avgOrderValue.toFixed(2)}`;
+            document.getElementById('avgOrderValue').textContent = `₱${avgOrderValue.toFixed(2)}`;
 
             // Stock turnover rate
             const avgInventoryValue = totalValue;
@@ -1982,7 +1982,7 @@
         function updateInventoryStats() {
             const totalValue = inventory.reduce((sum, item) => 
                 sum + (item.quantity * item.unitPrice), 0);
-            document.getElementById('totalStockValue').textContent = `${totalValue.toFixed(2)}`;
+            document.getElementById('totalStockValue').textContent = `₱${totalValue.toFixed(2)}`;
             document.getElementById('totalSKUs').textContent = inventory.length;
             
             const lowStock = inventory.filter(item => item.quantity < 10).length;
@@ -2127,9 +2127,9 @@
                         <td>${itemSKU}</td>
                         <td>${customerName}</td>
                         <td>${itemName}</td>
-                        <td>$${unitPrice.toFixed(2)}</td>
+                        <td>₱${unitPrice.toFixed(2)}</td>
                         <td>${quantity}</td>
-                        <td>$${total.toFixed(2)}</td>
+                        <td>₱${total.toFixed(2)}</td>
                         <td>${createdAt}</td>
                     </tr>
                 `;
@@ -2186,9 +2186,9 @@
             const allTimeAvgValue = sales.length > 0 ? allTimeTotal / sales.length : 0;
             
             // Update UI - use today's stats if available, otherwise use all-time stats
-            document.getElementById('todaysSales').textContent = `$${todayTotal > 0 ? todayTotal.toFixed(2) : allTimeTotal.toFixed(2)}`;
+            document.getElementById('todaysSales').textContent = `₱${todayTotal > 0 ? todayTotal.toFixed(2) : allTimeTotal.toFixed(2)}`;
             document.getElementById('unitsSoldToday').textContent = todayUnits > 0 ? todayUnits : allTimeUnits;
-            document.getElementById('avgOrderValue').textContent = `$${todayTotal > 0 ? avgValue.toFixed(2) : allTimeAvgValue.toFixed(2)}`;
+            document.getElementById('avgOrderValue').textContent = `₱${todayTotal > 0 ? avgValue.toFixed(2) : allTimeAvgValue.toFixed(2)}`;
             document.getElementById('totalTransactions').textContent = sales.length;
         }
 
@@ -2374,7 +2374,7 @@
                     <td>${new Date(order.orderDate?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
                     <td>${order.customer}</td>
                     <td>${order.items} items</td>
-                    <td>$${order.total.toFixed(2)}</td>
+                    <td>₱${order.total.toFixed(2)}</td>
                     <td><span class="stat-change ${order.status === 'Pending' ? 'negative' : 'positive'}">${order.status}</span></td>
                     <td>
                         <button class="btn btn-secondary" style="padding: 0.5rem; font-size: 0.9rem;" 
@@ -2427,7 +2427,7 @@
                         <td>${new Date(order.orderDate?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
                         <td>${order.customer}</td>
                         <td>${order.items} items</td>
-                        <td>$${order.total.toFixed(2)}</td>
+                        <td>₱${order.total.toFixed(2)}</td>
                         <td><span class="stat-change ${order.status === 'Pending' ? 'negative' : 'positive'}">${order.status}</span></td>
                         <td>
                             <button class="btn btn-secondary" style="padding: 0.5rem; font-size: 0.9rem;" 
@@ -2451,7 +2451,7 @@
             document.getElementById('completedOrders').textContent = completed;
             
             const totalValue = orders.reduce((sum, order) => sum + order.total, 0);
-            document.getElementById('totalOrderValue').textContent = `${totalValue.toFixed(2)}`;
+            document.getElementById('totalOrderValue').textContent = `₱${totalValue.toFixed(2)}`;
         }
 
         function showNewOrderModal() {
@@ -2537,7 +2537,7 @@
                 itemName: document.getElementById('orderItemName').value,
                 quantity: parseInt(document.getElementById('orderQuantity').value),
                 price: parseFloat(document.getElementById('orderPrice').value),
-                amount: parseFloat(document.getElementById('orderAmount').value),
+                amount: parseFloat(document.getElementById('orderAmount').value = (quantity * price)).toFixed(2),
                 status: 'Pending',
                 companyId: currentCompany,
                 createdAt: window.firebase.serverTimestamp(),
@@ -2621,8 +2621,8 @@
                     <td>${purchase.sku}</td>
                     <td>${purchase.itemName}</td>
                     <td>${purchase.quantity}</td>
-                    <td>$${purchase.price}</td>
-                    <td>$${purchase.amount || purchase.totalCost}</td>
+                    <td>₱${purchase.price}</td>
+                    <td>₱${purchase.amount || purchase.totalCost}</td>
                     <td><span class="stat-change ${purchase.status === 'Pending' ? 'negative' : 'positive'}">${purchase.status}</span></td>
                 </tr>
             `).join('');
@@ -2719,7 +2719,7 @@
 
         function updatePurchaseStats() {
             const totalPurchases = purchases.reduce((sum, p) => sum + p.totalCost, 0);
-            document.getElementById('totalPurchases').textContent = `${totalPurchases.toFixed(2)}`;
+            document.getElementById('totalPurchases').textContent = `₱${totalPurchases.toFixed(2)}`;
             
             const activePOs = purchases.filter(p => p.status === 'Pending').length;
             document.getElementById('activePOs').textContent = activePOs;
@@ -2793,7 +2793,7 @@
             try {
                 const quantity = parseInt(document.getElementById('purchaseQuantity').value);
                 const price = parseFloat(document.getElementById('purchasePrice').value);
-                const amount = parseFloat(document.getElementById('purchaseAmount').value);
+                const amount = parseFloat(document.getElementById('purchaseAmount').value = (quantity * price).toFixed(2););
                 const sku = document.getElementById('purchaseSKU').value;
                 const itemName = document.getElementById('purchaseItemName').value;
                 const category = document.getElementById('purchaseCategory').value;
@@ -3304,8 +3304,8 @@
                 const currentStockCoverage = totalItems > 0 ? Math.floor(totalItems / avgDailyConsumption) : 0;
                 
                 // Update UI
-                document.getElementById('predictedDemand').textContent = `$${predictedForecastAmount.toFixed(2)}`;
-                document.getElementById('recommendedOrder').textContent = recommendedOrder;
+                document.getElementById('predictedDemand').textContent = `₱${predictedForecastAmount.toFixed(2)}`;
+                document.getElementById('recommendedOrder').textContent = `${recommendedOrder} units (₱${recommendedOrderValue.toFixed(2)})`;
                 document.getElementById('stockCoverage').textContent = `${currentStockCoverage} days`;
                 
                 // Update suggested orders table
@@ -3501,7 +3501,7 @@
                     <td>${order.currentStock}</td>
                     <td>${order.salesVelocity} units/day</td>
                     <td>${order.daysOfStock} days</td>
-                    <td>${order.suggestedOrder} units ($${order.orderValue.toFixed(2)})</td>
+                    <td>${order.suggestedOrder} units (₱${order.orderValue.toFixed(2)})</td>
                     <td><span class="stat-change ${order.priority === 'High' ? 'negative' : order.priority === 'Medium' ? 'warning' : 'positive'}">${order.priority}</span></td>
                 </tr>
             `).join('');
@@ -3657,7 +3657,7 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Inventory Forecast Analysis'
+                            text: 'Inventory Forecast Analysis (₱)'
                         },
                         legend: {
                             position: 'top',
@@ -3798,7 +3798,7 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Sales vs Inventory Value Trend'
+                            text: 'Sales vs Inventory Value Trend (₱)'
                         },
                         legend: {
                             position: 'top',
