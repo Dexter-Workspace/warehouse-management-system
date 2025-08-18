@@ -2104,24 +2104,56 @@
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
+            // Debug: Log all sales to see their dates
+            console.log("All sales:", sales);
+            
             const todaySales = sales.filter(sale => {
-                // Use invoiceDate if available, otherwise fall back to date
-                const saleDate = new Date(sale.invoiceDate || (sale.date?.seconds * 1000) || 0);
+                let saleDate;
+                
+                // Handle different date formats
+                if (sale.invoiceDate) {
+                    // If invoiceDate is a string in YYYY-MM-DD format
+                    saleDate = new Date(sale.invoiceDate);
+                } else if (sale.date && sale.date.seconds) {
+                    // If date is a Firestore timestamp
+                    saleDate = new Date(sale.date.seconds * 1000);
+                } else if (sale.date) {
+                    // If date is already a Date object or timestamp
+                    saleDate = new Date(sale.date);
+                } else {
+                    // If no valid date found, exclude from today's sales
+                    return false;
+                }
+                
                 saleDate.setHours(0, 0, 0, 0);
+                
+                // Debug: Log each sale's date comparison
+                console.log(`Sale date: ${saleDate.toISOString()}, Today: ${today.toISOString()}, Match: ${saleDate.getTime() === today.getTime()}`);
+                
                 return saleDate.getTime() === today.getTime();
             });
             
-            const todayTotal = todaySales.reduce((sum, sale) => sum + (sale.total || 0), 0);
-            document.getElementById('todaysSales').textContent = `$${todayTotal.toFixed(2)}`;
+            // Debug: Log today's sales
+            console.log("Today's sales:", todaySales);
             
+            // Calculate today's stats
+            const todayTotal = todaySales.reduce((sum, sale) => sum + (sale.total || sale.amount || 0), 0);
             const todayUnits = todaySales.reduce((sum, sale) => sum + (sale.quantity || 0), 0);
-            document.getElementById('unitsSoldToday').textContent = todayUnits;
-            
             const avgValue = todaySales.length > 0 ? todayTotal / todaySales.length : 0;
-            document.getElementById('avgOrderValue').textContent = `$${avgValue.toFixed(2)}`;
             
+            // Calculate all-time stats
+            const allTimeTotal = sales.reduce((sum, sale) => sum + (sale.total || sale.amount || 0), 0);
+            const allTimeUnits = sales.reduce((sum, sale) => sum + (sale.quantity || 0), 0);
+            const allTimeAvgValue = sales.length > 0 ? allTimeTotal / sales.length : 0;
+            
+            // Update UI - use today's stats if available, otherwise use all-time stats
+            document.getElementById('todaysSales').textContent = `$${todayTotal > 0 ? todayTotal.toFixed(2) : allTimeTotal.toFixed(2)}`;
+            document.getElementById('unitsSoldToday').textContent = todayUnits > 0 ? todayUnits : allTimeUnits;
+            document.getElementById('avgOrderValue').textContent = `$${todayTotal > 0 ? avgValue.toFixed(2) : allTimeAvgValue.toFixed(2)}`;
             document.getElementById('totalTransactions').textContent = sales.length;
         }
+
+
 
 
         function showAddSaleModal() {
