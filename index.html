@@ -3250,6 +3250,11 @@
             const endDate = document.getElementById('forecastEndDate').value;
             const forecastDays = parseInt(document.getElementById('forecastDays').value);
             
+            if (!startDate || !endDate) {
+                showNotification('Please select both start and end dates for the forecast period', 'warning');
+                return;
+            }
+            
             showNotification('Generating forecast report...', 'success');
             
             // Filter inventory by search term and category
@@ -3265,42 +3270,241 @@
                 filteredInventory = filteredInventory.filter(item => item.category === selectedCategory);
             }
             
-            // Calculate current stock levels
-            const totalItems = filteredInventory.reduce((sum, item) => sum + item.quantity, 0);
+            // Filter sales by date range and other criteria
+            const filteredSales = sales.filter(sale => {
+                let saleDate;
+                
+                // Handle different date formats
+                if (sale.invoiceDate) {
+                    saleDate = new Date(sale.invoiceDate);
+                } else if (sale.date && sale.date.seconds) {
+                    saleDate = new Date(sale.date.seconds * 1000);
+                } else if (sale.date) {
+                    saleDate = new Date(sale.date);
+                } else {
+                    return false; // Exclude sales without valid dates
+                }
+                
+                // Check if sale is within the selected date range
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999); // Include the entire end date
+                
+                return saleDate >= start && saleDate <= end;
+            });
             
-            // Calculate average daily consumption based on selected period
+            // If no sales data found, use a simple forecast based on current inventory
+            if (filteredSales.length === 0) {
+                const totalItems = filteredInventory.reduce((sum, item) => sum + item.quantity, 0);
+                const daysDiff = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
+                const avgDailyConsumption = daysDiff > 0 ? totalItems / daysDiff : 0;
+                
+                const predictedForecastAmount = Math.floor(avgDailyConsumption * forecastDays);
+                const recommendedOrder = Math.floor(predictedForecastAmount * 0.7);
+                const currentStockCoverage = totalItems > 0 ? Math.floor(totalItems / avgDailyConsumption) : 0;
+                
+                // Update UI
+                document.getElementById('predictedDemand').textContent = `$${predictedForecastAmount.toFixed(2)}`;
+                document.getElementById('recommendedOrder').textContent = recommendedOrder;
+                document.getElementById('stockCoverage').textContent = `${currentStockCoverage} days`;
+                
+                // Update suggested orders table
+                updateSuggestedOrdersTable(filteredInventory);
+                
+                // Update chart
+                updateForecastChart({
+                    currentStock: totalItems,
+                    dailyDemand: avgDailyConsumption,
+                    recommendedOrder: recommendedOrder,
+                    coverageDays: currentStockCoverage,
+                    days: forecastDays
+                });
+                
+                showNotification('Limited sales data. Forecast based on current inventory levels.', 'warning');
+                return;
+            }
+            
+            // Calculate sales metrics for forecasting
+            const totalSalesValue = filteredSales.reduce((sum, sale) => sum + (sale.total || sale.amount || 0), 0);
+            const totalUnitsSold = filteredSales.reduce((sum, sale) => sum + (sale.quantity || 0), 0);
+            
+            // Calculate date range in days
             const daysDiff = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
-            const avgDailyConsumption = daysDiff > 0 ? totalItems / daysDiff : 0;
+            
+            // Calculate daily averages
+            const avgDailySales = daysDiff > 0 ? totalSalesValue / daysDiff : 0;
+            const avgDailyUnits = daysDiff > 0 ? totalUnitsSold / daysDiff : 0;
+            
+            // Calculate seasonal trends (simple month-over-month comparison)
+            const currentMonth = new Date().getMonth();
+            const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+            
+            const currentMonthSales = filteredSales.filter(sale => {
+                let saleDate;
+                if (sale.invoiceDate) {
+                    saleDate = new Date(sale.invoiceDate);
+                } else if (sale.date && sale.date.seconds) {
+                    saleDate = new Date(sale.date.seconds * 1000);
+                } else if (sale.date) {
+                    saleDate = new Date(sale.date);
+                } else {
+                    return false;
+                }
+                return saleDate.getMonth() === currentMonth;
+            }).reduce((sum, sale) => sum + (sale.total || sale.amount || 0), 0);
+            
+            const lastMonthSales = filteredSales.filter(sale => {
+                let saleDate;
+                if (sale.invoiceDate) {
+                    saleDate = new Date(sale.invoiceDate);
+                } else if (sale.date && sale.date.seconds) {
+                    saleDate = new Date(sale.date.seconds * 1000);
+                } else if (sale.date) {
+                    saleDate = new Date(sale.date);
+                } else {
+                    return false;
+                }
+                return saleDate.getMonth() === lastMonth;
+            }).reduce((sum, sale) => sum + (sale.total || sale.amount || 0), 0);
+            
+            // Calculate growth rate
+            const growthRate = lastMonthSales > 0 ? (currentMonthSales - lastMonthSales) / lastMonthSales : 0;
+            
+            // Apply growth rate to forecast
+            const adjustedDailySales = avgDailySales * (1 + growthRate);
+            const adjustedDailyUnits = avgDailyUnits * (1 + growthRate);
             
             // Calculate forecast values
-            const predictedForecastAmount = Math.floor(avgDailyConsumption * forecastDays);
-            const recommendedOrder = Math.floor(predictedForecastAmount * 0.7);
-            const currentStockCoverage = totalItems > 0 ? Math.floor(totalItems / avgDailyConsumption) : 0;
+            const predictedForecastAmount = Math.floor(adjustedDailySales * forecastDays);
+            const predictedUnitsNeeded = Math.floor(adjustedDailyUnits * forecastDays);
+            
+            // Calculate current stock levels
+            const currentStock = filteredInventory.reduce((sum, item) => sum + item.quantity, 0);
+            const currentStockValue = filteredInventory.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+            
+            // Calculate recommended order
+            const recommendedOrder = Math.max(0, predictedUnitsNeeded - currentStock);
+            const recommendedOrderValue = recommendedOrder * (currentStockValue / currentStock || 0);
+            
+            // Calculate stock coverage
+            const stockCoverage = adjustedDailyUnits > 0 ? Math.floor(currentStock / adjustedDailyUnits) : 0;
             
             // Update UI
             document.getElementById('predictedDemand').textContent = `$${predictedForecastAmount.toFixed(2)}`;
-            document.getElementById('recommendedOrder').textContent = recommendedOrder;
-            document.getElementById('stockCoverage').textContent = `${currentStockCoverage} days`;
+            document.getElementById('recommendedOrder').textContent = `${recommendedOrder} units ($${recommendedOrderValue.toFixed(2)})`;
+            document.getElementById('stockCoverage').textContent = `${stockCoverage} days`;
             
-            // Update suggested orders table
-            updateSuggestedOrdersTable(filteredInventory);
+            // Update suggested orders table with more detailed information
+            updateSuggestedOrdersTableWithDetails(filteredInventory, filteredSales, forecastDays, adjustedDailyUnits);
             
-            // Update chart
+            // Update chart with more detailed data
             updateForecastChart({
-                currentStock: totalItems,
-                dailyDemand: avgDailyConsumption,
+                currentStock: currentStock,
+                dailyDemand: adjustedDailyUnits,
                 recommendedOrder: recommendedOrder,
-                coverageDays: currentStockCoverage,
-                days: forecastDays
+                coverageDays: stockCoverage,
+                days: forecastDays,
+                salesData: filteredSales,
+                growthRate: growthRate
             });
             
             // Show detailed notification
             const categoryText = selectedCategory || 'all categories';
             const searchInfo = searchTerm ? ` for "${searchTerm}"` : '';
+            const growthText = growthRate > 0 ? ` (+${(growthRate * 100).toFixed(1)}% growth)` : growthRate < 0 ? ` (${(growthRate * 100).toFixed(1)}% decline)` : '';
+            
             showNotification(
-                `${forecastDays}-day forecast generated${searchInfo} for ${categoryText}`,
+                `${forecastDays}-day forecast generated${searchInfo} for ${categoryText}${growthText}`,
                 'success'
             );
+        }
+
+        function updateSuggestedOrdersTableWithDetails(items, salesData, forecastDays, dailyDemand) {
+            const tbody = document.getElementById('suggestedOrdersTable');
+            
+            if (items.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="empty-state">No items found matching your search</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Calculate sales velocity for each item
+            const itemSales = {};
+            salesData.forEach(sale => {
+                if (!itemSales[sale.itemSKU]) {
+                    itemSales[sale.itemSKU] = {
+                        quantity: 0,
+                        total: 0,
+                        transactions: 0
+                    };
+                }
+                itemSales[sale.itemSKU].quantity += sale.quantity || 0;
+                itemSales[sale.itemSKU].total += sale.total || sale.amount || 0;
+                itemSales[sale.itemSKU].transactions += 1;
+            });
+            
+            // Generate suggested orders
+            const suggestedOrders = items.map(item => {
+                const sales = itemSales[item.sku] || { quantity: 0, total: 0, transactions: 0 };
+                
+                // Calculate days of stock based on current sales velocity
+                const dailyUsage = sales.quantity / forecastDays;
+                const daysOfStock = dailyUsage > 0 ? item.quantity / dailyUsage : 999;
+                
+                // Calculate suggested order quantity
+                let suggestedOrder = 0;
+                let priority = 'Low';
+                
+                if (daysOfStock < 7) {
+                    priority = 'High';
+                    suggestedOrder = Math.ceil(dailyUsage * 30 - item.quantity); // Order for 30 days
+                } else if (daysOfStock < 14) {
+                    priority = 'Medium';
+                    suggestedOrder = Math.ceil(dailyUsage * 14 - item.quantity); // Order for 14 days
+                }
+                
+                // Ensure we don't order negative quantities
+                suggestedOrder = Math.max(0, suggestedOrder);
+                
+                // Calculate order value
+                const orderValue = suggestedOrder * item.unitPrice;
+                
+                return {
+                    name: item.name,
+                    category: item.category,
+                    currentStock: item.quantity,
+                    salesVelocity: dailyUsage.toFixed(2),
+                    daysOfStock: daysOfStock.toFixed(1),
+                    suggestedOrder: suggestedOrder,
+                    orderValue: orderValue,
+                    priority: priority
+                };
+            });
+            
+            // Sort by priority (High first) and then by days of stock (lowest first)
+            suggestedOrders.sort((a, b) => {
+                if (a.priority !== b.priority) {
+                    const priorityOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
+                    return priorityOrder[a.priority] - priorityOrder[b.priority];
+                }
+                return parseFloat(a.daysOfStock) - parseFloat(b.daysOfStock);
+            });
+            
+            // Update table
+            tbody.innerHTML = suggestedOrders.map(order => `
+                <tr>
+                    <td>${order.name}</td>
+                    <td>${order.category}</td>
+                    <td>${order.currentStock}</td>
+                    <td>${order.salesVelocity} units/day</td>
+                    <td>${order.daysOfStock} days</td>
+                    <td>${order.suggestedOrder} units ($${order.orderValue.toFixed(2)})</td>
+                    <td><span class="stat-change ${order.priority === 'High' ? 'negative' : order.priority === 'Medium' ? 'warning' : 'positive'}">${order.priority}</span></td>
+                </tr>
+            `).join('');
         }
 
 
@@ -3487,6 +3691,7 @@
             const currentStockData = [];
             const predictedDemandData = [];
             const recommendedStockData = [];
+            const salesData = [];
 
             // Generate labels for each day
             for (let i = 0; i <= data.days; i++) {
@@ -3494,23 +3699,70 @@
             }
 
             // Calculate daily values
-            const dailyConsumption = data.currentStock / data.coverageDays;
+            const dailyConsumption = data.dailyDemand;
             let currentStock = data.currentStock;
 
             for (let i = 0; i <= data.days; i++) {
                 currentStockData.push(Math.max(0, currentStock));
-                predictedDemandData.push(data.dailyDemand * i);
-                recommendedStockData.push(data.recommendedOrder);
+                predictedDemandData.push(dailyConsumption * i);
+                
+                // Recommended stock level (current stock + recommended order - consumption)
+                const recommendedStock = i === 0 ? currentStock : 
+                    Math.max(0, currentStock + data.recommendedOrder - (dailyConsumption * i));
+                recommendedStockData.push(recommendedStock);
+                
+                // Add historical sales data if available
+                if (data.salesData && i < data.salesData.length) {
+                    const daySales = data.salesData
+                        .filter(sale => {
+                            let saleDate;
+                            if (sale.invoiceDate) {
+                                saleDate = new Date(sale.invoiceDate);
+                            } else if (sale.date && sale.date.seconds) {
+                                saleDate = new Date(sale.date.seconds * 1000);
+                            } else if (sale.date) {
+                                saleDate = new Date(sale.date);
+                            } else {
+                                return false;
+                            }
+                            return saleDate.getDate() === (new Date().getDate() - (data.salesData.length - 1 - i));
+                        })
+                        .reduce((sum, sale) => sum + (sale.quantity || 0), 0);
+                    salesData.push(daySales);
+                } else {
+                    salesData.push(0);
+                }
                 
                 currentStock -= dailyConsumption;
             }
 
+            // Update chart datasets
             forecastChart.data.labels = labels;
             forecastChart.data.datasets[0].data = currentStockData;
             forecastChart.data.datasets[1].data = predictedDemandData;
             forecastChart.data.datasets[2].data = recommendedStockData;
+            
+            // Add sales data if available
+            if (data.salesData && forecastChart.data.datasets.length < 4) {
+                forecastChart.data.datasets.push({
+                    label: 'Historical Sales',
+                    data: salesData,
+                    borderColor: 'rgb(153, 102, 255)',
+                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                    tension: 0.1
+                });
+            } else if (data.salesData) {
+                forecastChart.data.datasets[3].data = salesData;
+            }
+            
+            // Update chart title to include growth rate
+            const growthText = data.growthRate ? 
+                ` (Growth: ${(data.growthRate * 100).toFixed(1)}%)` : '';
+            forecastChart.options.plugins.title.text = `Inventory Forecast Analysis${growthText}`;
+            
             forecastChart.update();
         }
+
 
         let dashboardChart = null;
 
