@@ -2099,27 +2099,30 @@
 
 
 
+        // Replace the existing updateSalesStats function with this:
         function updateSalesStats() {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
             const todaySales = sales.filter(sale => {
-                const saleDate = new Date(sale.date?.seconds * 1000 || 0);
+                // Use invoiceDate if available, otherwise fall back to date
+                const saleDate = new Date(sale.invoiceDate || (sale.date?.seconds * 1000) || 0);
                 saleDate.setHours(0, 0, 0, 0);
                 return saleDate.getTime() === today.getTime();
             });
             
-            const todayTotal = todaySales.reduce((sum, sale) => sum + sale.total, 0);
-            document.getElementById('todaysSales').textContent = `${todayTotal.toFixed(2)}`;
+            const todayTotal = todaySales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+            document.getElementById('todaysSales').textContent = `$${todayTotal.toFixed(2)}`;
             
-            const todayUnits = todaySales.reduce((sum, sale) => sum + sale.quantity, 0);
+            const todayUnits = todaySales.reduce((sum, sale) => sum + (sale.quantity || 0), 0);
             document.getElementById('unitsSoldToday').textContent = todayUnits;
             
             const avgValue = todaySales.length > 0 ? todayTotal / todaySales.length : 0;
-            document.getElementById('avgOrderValue').textContent = `${avgValue.toFixed(2)}`;
+            document.getElementById('avgOrderValue').textContent = `$${avgValue.toFixed(2)}`;
             
             document.getElementById('totalTransactions').textContent = sales.length;
         }
+
 
         function showAddSaleModal() {
             const modalBody = `
@@ -2243,6 +2246,7 @@
                 closeModal();
                 await loadSales();
                 await loadInventory();
+                await updateSalesStats();
                 showNotification('Sale recorded successfully', 'success');
             } catch (error) {
                 showNotification('Error recording sale: ' + error.message, 'error');
@@ -3116,6 +3120,10 @@
                         showNotification(`Import completed: ${successCount} successful, ${errorCount} failed out of ${totalProcessed} total.`, 'warning');
                     } else {
                         showNotification(`Successfully imported ${successCount} items.`, 'success');
+                    }
+                    if (type === 'sales') {
+                        updateSalesStats();
+                        showNotification(`Successfully imported ${successCount} sales records. Stats updated.`, 'success');
                     }
                     
                 } catch (error) {
